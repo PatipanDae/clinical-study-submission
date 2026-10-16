@@ -1,0 +1,186 @@
+/* ============================================================================
+   Enterprise SaaS theme — LIGHT MODE
+   Clinical Research Administration Platform. Visual layer loaded LAST so it
+   refines look WITHOUT changing markup/content/JS. Overrides the pages'
+   hardcoded dark colors to a clean, professional white/slate palette.
+   ============================================================================ */
+
+:root {
+  --app-bg:        #f1f5f9;   /* page background (soft gray) */
+  --surface-1:     #ffffff;   /* cards / panels */
+  --surface-2:     #f8fafc;   /* inputs / insets */
+  --surface-3:     #eef2f7;   /* hover / elevated rows */
+  --border:        #e2e8f0;
+  --border-soft:   #eef2f7;
+  --text:          #0f172a;
+  --text-muted:    #475569;
+  --text-dim:      #94a3b8;
+  --brand:         #2563eb;
+  --brand-strong:  #1d4ed8;
+  --brand-tint:    rgba(37,99,235,.12);
+  --ok:#15803d; --ok-bg:#e9f8ef; --ok-bd:#86efac;
+  --warn:#b45309; --warn-bg:#fef5e7; --warn-bd:#fcd9a5;
+  --danger:#b91c1c; --danger-bg:#fdecec; --danger-bd:#f6b7b7;
+  --info:#1d4ed8; --info-bg:#e8f0ff; --info-bd:#bcd3ff;
+  --radius:12px; --radius-sm:9px;
+  --shadow:0 1px 2px rgba(16,24,40,.06), 0 8px 24px -14px rgba(16,24,40,.25);
+  --font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans Thai",sans-serif;
+}
+
+/* ---- base ---- */
+body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(37,99,235,.05), transparent 60%),
+    var(--app-bg) !important;
+  color: var(--text) !important;
+  font-family: var(--font) !important;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: .1px;
+  border-top: 4px solid var(--brand) !important;
+}
+a { color: var(--brand) !important; }
+
+/* ---- full-width layout (use the whole screen) ---- */
+.container { width: 100% !important; max-width: 1100px !important; margin: 0 auto !important; }
+.wrap { max-width: 1320px !important; margin: 0 auto !important; }
+/* give centered single-card pages (submission/result) breathing room + top gap */
+body { padding-left: 24px; padding-right: 24px; }
+
+/* ---- generic dark-surface overrides (catch hardcoded colors) ---- */
+.card, .table-wrap, .stat, .ai-panel, .login-card,
+.container .card, .doc-field, .track-box, .hd-tickets, .ai-rec,
+.comment-box, .resub-note, .conditional, .choice, .section-note {
+  background: var(--surface-1) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+.card, .table-wrap, .stat, .ai-panel, .login-card {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+/* text colors */
+h1, h2, h3, .title, .doc-name, .track-name, .tl-label, .hd-tsub { color: var(--text) !important; }
+.subtitle, p.subtitle, .muted, .count-note, .section-label, .lbl,
+.ai-h, .meta, .card .sub, .note-hint, .hint, .ai-detail, .track-meta,
+.tl-date, .hd-th .muted { color: var(--text-muted) !important; }
+.field-label, label, .rf-label { color: #334155 !important; }
+
+/* ---- headings / section titles ---- */
+h1 { letter-spacing: -.2px; font-weight: 700; }
+.section-title {
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--border) !important;
+  font-weight: 700 !important;
+}
+.section-title::before {
+  content: ""; display: inline-block; width: 3px; height: 1em;
+  background: var(--brand); border-radius: 2px; margin-right: 9px; vertical-align: -2px;
+}
+
+/* ---- top bar ---- */
+.topbar {
+  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: var(--shadow);
+}
+.topbar h1 { font-size: 1.05rem; color: var(--text) !important; }
+
+/* ---- inputs ---- */
+input[type="text"], input[type="email"], input[type="password"],
+textarea, select, .lookup input, .toolbar input, .toolbar select,
+.review-box select, .review-box textarea, .hd-reply input, .hd-row input,
+.resubmit textarea, .resubmit input {
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text) !important;
+}
+input::placeholder, textarea::placeholder { color: #94a3b8 !important; }
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px var(--brand-tint) !important;
+}
+
+/* ---- buttons ---- */
+button[type="submit"], .save-btn, .lookup button, .resubmit button, .hd-send, .hd-fab {
+  background: linear-gradient(180deg, var(--brand), var(--brand-strong)) !important;
+  border: none !important; color: #fff !important;
+  border-radius: var(--radius-sm) !important; font-weight: 600 !important;
+  box-shadow: var(--shadow);
+}
+button[type="submit"]:hover, .save-btn:hover, .lookup button:hover,
+.resubmit button:hover, .hd-send:hover, .hd-fab:hover { filter: brightness(1.06); }
+.btn-ghost, .clear-btn, .clear-file, .hd-esc, .hd-view {
+  background: #fff !important; border: 1px solid var(--border) !important; color: var(--text-muted) !important;
+}
+.btn-ghost:hover, .clear-btn:hover, .clear-file:hover, .hd-esc:hover { background: var(--surface-3) !important; color: var(--text) !important; }
+.del-btn { background: #fdecec !important; color: #b91c1c !important; border: 1px solid #f6b7b7 !important; }
+.del-btn:hover { background: #fbd9d9 !important; }
+
+/* ---- status badges ---- */
+.status-pill, .ai-badge, .hd-tstatus, .badge, .pill {
+  border-radius: 999px !important; font-weight: 700 !important;
+}
+.st-Approved  { background: var(--ok-bg)!important;    color: var(--ok)!important;    border:1px solid var(--ok-bd)!important; }
+.st-Rejected  { background: var(--danger-bg)!important; color: var(--danger)!important; border:1px solid var(--danger-bd)!important; }
+.st-Pending   { background: var(--warn-bg)!important;  color: var(--warn)!important;  border:1px solid var(--warn-bd)!important; }
+.st-Needs-revision { background: var(--warn-bg)!important; color:#c2410c!important;   border:1px solid var(--warn-bd)!important; }
+.st-In-review { background: var(--info-bg)!important;  color: var(--info)!important;  border:1px solid var(--info-bd)!important; }
+.badge { background: var(--surface-2)!important; border:1px solid var(--border)!important; color: var(--text-muted)!important; }
+
+/* ---- stat tiles ---- */
+.stats { gap: 16px; }
+.stat { padding: 18px !important; position: relative; overflow: hidden; }
+.stat::after { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background: var(--brand); }
+.stat .num { color: var(--brand) !important; font-weight: 800 !important; letter-spacing: -.5px; }
+.stat .lbl { color: var(--text-muted) !important; text-transform: uppercase; letter-spacing: .5px; font-size: .7rem !important; }
+
+/* ---- data table ---- */
+table thead th { background: var(--surface-2) !important; color: var(--text-muted) !important; border-bottom: 1px solid var(--border) !important; }
+tbody td { border-bottom: 1px solid var(--border-soft) !important; color: var(--text) !important; }
+tbody tr.main-row:hover { background: var(--surface-3) !important; }
+tbody tr.expanded-row > td { background: #f8fafc !important; }
+.id-cell { color: var(--text-dim) !important; }
+.title-cell .th { color: var(--text-muted) !important; }
+
+/* ---- detail / review ---- */
+.detail { padding: 18px 20px !important; }
+.track-box { background: var(--surface-2) !important; border: 1px solid var(--border) !important; }
+.review-box { border-top: 1px solid var(--border) !important; }
+.row strong { color: #1d4ed8 !important; }
+
+/* ---- AI panel ---- */
+.ai-panel { background: var(--surface-2) !important; }
+.ai-rec { background: #fff !important; }
+.ai-yes { color: var(--ok) !important; } .ai-no { color: var(--danger) !important; }
+.ai-src { color: var(--brand) !important; background: var(--info-bg) !important; border: 1px solid var(--info-bd) !important; }
+.ai-sum, .ai-analyzed { color: var(--text-muted) !important; }
+
+/* ---- timeline ---- */
+.tl-step .dot { background: #fff !important; border-color: var(--border) !important; color: var(--text-dim) !important; }
+.tl-step.done .dot, .tl-step.current .dot { background: var(--brand) !important; border-color: var(--brand) !important; color: #fff !important; box-shadow: 0 0 0 4px var(--brand-tint); }
+.tl-step:not(:first-child)::before { background: var(--border) !important; }
+.tl-step.done:not(:first-child)::before, .tl-step.current:not(:first-child)::before { background: var(--brand) !important; }
+.tl-label { color: var(--text) !important; }
+
+/* ---- help desk chat widget (light) ---- */
+.hd-panel { background: #fff !important; border: 1px solid var(--border) !important; box-shadow: 0 10px 40px rgba(16,24,40,.18) !important; }
+.hd-head { background: var(--surface-2) !important; border-bottom: 1px solid var(--border) !important; }
+.hd-head .t { color: var(--text) !important; }
+.hd-body { background: #fff !important; }
+.hd-foot { background: var(--surface-2) !important; border-top: 1px solid var(--border) !important; }
+.hd-bot { background: var(--surface-2) !important; color: var(--text) !important; border: 1px solid var(--border) !important; }
+.hd-user { background: var(--brand) !important; color: #fff !important; }
+.hd-staff { background: var(--ok-bg) !important; color: #166534 !important; border: 1px solid var(--ok-bd) !important; }
+
+/* ---- messages ---- */
+.success { background: var(--ok-bg) !important; border: 1px solid var(--ok-bd) !important; color: #166534 !important; }
+.error, .rf-err { color: #dc2626 !important; }
+
+/* scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }

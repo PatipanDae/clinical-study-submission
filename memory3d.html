@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>3D Memory Match</title>
+<style>
+  :root {
+    --bg: #1e1e2e;
+    --panel: #313244;
+    --text: #cdd6f4;
+    --accent: #89b4fa;
+    --accent2: #f9e2af;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+
+  #app { position: fixed; inset: 0; }
+
+  canvas { display: block; }
+
+  .hud {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    pointer-events: none;
+    flex-wrap: wrap;
+  }
+
+  .hud .title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+
+  .stats {
+    display: flex;
+    gap: 18px;
+    font-size: 15px;
+  }
+
+  .stats .stat b { color: var(--accent2); }
+
+  .controls {
+    pointer-events: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  select, button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid #6c7086;
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.12s, transform 0.05s;
+  }
+
+  button:hover, select:hover { background: var(--accent); color: #1e1e2e; }
+  button:active { transform: scale(0.96); }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(30, 30, 46, 0.75);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+
+  .overlay.show { opacity: 1; pointer-events: auto; }
+
+  .overlay .card {
+    background: var(--panel);
+    border: 1px solid #6c7086;
+    border-radius: 16px;
+    padding: 32px 40px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .overlay h2 { margin: 0 0 10px; font-size: 28px; color: var(--accent2); }
+  .overlay p { margin: 0 0 20px; font-size: 16px; }
+
+  .hint {
+    position: fixed;
+    bottom: 14px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: #9399b2;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div class="hud">
+    <div class="title">🃏 3D Memory Match</div>
+    <div class="stats">
+      <div class="stat">Moves: <b id="moves">0</b></div>
+      <div class="stat">Matches: <b id="matches">0</b></div>
+      <div class="stat">Time: <b id="time">0:00</b></div>
+    </div>
+    <div class="controls">
+      <select id="difficulty">
+        <option value="easy">Easy (4×3)</option>
+        <option value="medium" selected>Medium (4×4)</option>
+        <option value="hard">Hard (6×4)</option>
+      </select>
+      <button id="newGame">New Game</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="card">
+      <h2 id="winTitle">🎉 You Win!</h2>
+      <p id="winText"></p>
+      <button id="playAgain">Play Again</button>
+    </div>
+  </div>
+
+  <div class="hint">Click a card to flip it. Match all pairs to win. Drag to rotate the view.</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  if (!window.THREE) {
+    document.getElementById("app").innerHTML =
+      '<p style="padding:40px;color:#f38ba8">Failed to load three.js. Check your internet connection.</p>';
+    return;
+  }
+
+  const THREE = window.THREE;
+
+  // --- Config ------------------------------------------------------------
+
+  const DIFFICULTY = {
+    easy:   { cols: 4, rows: 3 },   // 12 cards -> 6 pairs
+    medium: { cols: 4, rows: 4 },   // 16 cards -> 8 pairs
+    hard:   { cols: 6, rows: 4 },   // 24 cards -> 12 pairs
+  };
+
+  // Symbols drawn on card faces (emoji). Need at least 12 unique.
+  const SYMBOLS = ["🍎","🍌","🍇","🍊","🍓","🍋","🥝","🍉","🍒","🥥","🍑","🍍",
+                   "🚀","⭐","🎸","🎲","🐱","🐶","🦊","🐸","🌺","🌈","⚡","❤️"];
+
+  const CARD_W = 1.6, CARD_H = 2.2, CARD_D = 0.12;
+  const GAP = 0.35;
+
+  // --- Scene setup -------------------------------------------------------
+
+  const app = document.getElementById("app");
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1e1e2e);
+
+  const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, 0, 14);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  app.appendChild(renderer.domElement);
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+  scene.add(ambient);
+
+  const key = new THREE.DirectionalLight(0xffffff, 1.1);
+  key.position.set(5, 8, 10);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.near = 1;
+  key.shadow.camera.far = 50;
+  key.shadow.camera.left = -15;
+  key.shadow.camera.right = 15;
+  key.shadow.camera.top = 15;
+  key.shadow.camera.bottom = -15;
+  scene.add(key);
+
+  const fill = new THREE.DirectionalLight(0x89b4fa, 0.4);
+  fill.position.set(-6, -2, 6);
+  scene.add(fill);
+
+  // Floor to catch shadows
+  const floorGeo = new THREE.PlaneGeometry(60, 60);
+  const floorMat = new THREE.ShadowMaterial({ opacity: 0.3 });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.position.z = -0.5;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  const boardGroup = new THREE.Group();
+  scene.add(boardGroup);
+
+  // --- Texture generation (canvas) --------------------------------------
+
+  const texCache = new Map();
+
+  function makeFaceTexture(symbol) {
+    if (texCache.has(symbol)) return texCache.get(symbol);
+    const size = 256;
+    const canvas = document.createElement("canvas");
+    canvas.width = size; canvas.height = size * (CARD_H / CARD_W);
+    const ctx = canvas.getContext("2d");
+
+    // Background
+    ctx.fillStyle = "#f5f5f7";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Inner border
+    ctx.strokeStyle = "#89b4fa";
+    ctx.lineWidth = 10;
+    ctx.strokeRect(14, 14, canvas.width - 28, canvas.height - 28);
+
+    // Symbol
+    ctx.font = `${size * 0.6}px serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(symbol, canvas.width / 2, canvas.height / 2);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    texCache.set(symbol, tex);
+    return tex;
+  }
+
+  let backTexture = null;
+  function makeBackTexture() {
+    if (backTexture) return backTexture;
+    const w = 256, h = Math.round(256 * (CARD_H / CARD_W));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, "#89b4fa");
+    grad.addColorStop(1, "#cba6f7");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    // Diamond pattern
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.lineWidth = 3;
+    const step = 32;
+    for (let i = -h; i < w + h; i += step) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + h, h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - h, h); ctx.stroke();
+    }
+    ctx.strokeStyle = "#f9e2af";
+    ctx.lineWidth = 10;
+    ctx.strokeRect(14, 14, w - 28, h - 28);
+    backTexture = new THREE.CanvasTexture(canvas);
+    return backTexture;
+  }
+
+  // --- Card creation -----------------------------------------------------
+  // A card is a thin box. We build it so that at rotation.y = 0 the BACK
+  // (patterned) side faces the camera, and at rotation.y = PI the FACE
+  // (symbol) side faces the camera.
+
+  function createCard(symbol) {
+    const geo = new THREE.BoxGeometry(CARD_W, CARD_H, CARD_D);
+    const edgeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+
+    const faceTex = makeFaceTexture(symbol);
+    const backTex = makeBackTexture();
+
+    const faceMat = new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.5 });
+    const backMat = new THREE.MeshStandardMaterial({ map: backTex, roughness: 0.5 });
+
+    // BoxGeometry material order: +x, -x, +y, -y, +z, -z
+    // +z is the front (toward camera when rotation.y = 0) -> show back pattern
+    // -z is the rear -> show the symbol face
+    const materials = [
+      edgeMat.clone(), edgeMat.clone(),
+      edgeMat.clone(), edgeMat.clone(),
+      backMat,  // +z
+      faceMat,  // -z
+    ];
+
+    const mesh = new THREE.Mesh(geo, materials);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    const card = {
+      mesh,
+      symbol,
+      flipped: false,   // showing face
+      matched: false,
+      targetRot: 0,     // desired rotation.y
+      home: new THREE.Vector3(),
+      matchFloat: 0,    // animation accumulator for matched cards
+    };
+    mesh.userData.card = card;
+    return card;
+  }
+
+  // --- Game state --------------------------------------------------------
+
+  let cards = [];
+  let firstPick = null;
+  let secondPick = null;
+  let busy = false;        // locked while a mismatched pair is shown
+  let moves = 0;
+  let matchesFound = 0;
+  let totalPairs = 0;
+  let startTime = 0;
+  let timerId = null;
+  let gameOver = false;
+
+  const movesEl = document.getElementById("moves");
+  const matchesEl = document.getElementById("matches");
+  const timeEl = document.getElementById("time");
+  const overlay = document.getElementById("overlay");
+  const winText = document.getElementById("winText");
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function clearBoard() {
+    for (const card of cards) {
+      boardGroup.remove(card.mesh);
+      card.mesh.geometry.dispose();
+      card.mesh.material.forEach((m) => m.dispose());
+    }
+    cards = [];
+  }
+
+  function newGame() {
+    clearBoard();
+    firstPick = secondPick = null;
+    busy = false;
+    gameOver = false;
+    moves = 0;
+    matchesFound = 0;
+    overlay.classList.remove("show");
+
+    const level = document.getElementById("difficulty").value;
+    const { cols, rows } = DIFFICULTY[level];
+    const count = cols * rows;
+    totalPairs = count / 2;
+
+    // Pick symbols and duplicate into pairs.
+    const chosen = shuffle(SYMBOLS.slice()).slice(0, totalPairs);
+    const deck = shuffle(chosen.concat(chosen));
+
+    // Layout grid centered on origin.
+    const stepX = CARD_W + GAP;
+    const stepY = CARD_H + GAP;
+    const offsetX = ((cols - 1) * stepX) / 2;
+    const offsetY = ((rows - 1) * stepY) / 2;
+
+    for (let i = 0; i < deck.length; i++) {
+      const r = Math.floor(i / cols);
+      const c = i % cols;
+      const card = createCard(deck[i]);
+      const x = c * stepX - offsetX;
+      const y = offsetY - r * stepY;
+      card.mesh.position.set(x, y, 0);
+      card.home.set(x, y, 0);
+      card.mesh.rotation.y = 0; // show back
+      boardGroup.add(card.mesh);
+      cards.push(card);
+    }
+
+    fitCameraToBoard(cols, rows);
+    updateHUD();
+    startTimer();
+  }
+
+  function fitCameraToBoard(cols, rows) {
+    const stepX = CARD_W + GAP;
+    const stepY = CARD_H + GAP;
+    const boardW = cols * stepX;
+    const boardH = rows * stepY;
+    const fovRad = (camera.fov * Math.PI) / 180;
+    const aspect = window.innerWidth / window.innerHeight;
+    const distH = (boardH / 2) / Math.tan(fovRad / 2);
+    const distW = (boardW / 2) / (Math.tan(fovRad / 2) * aspect);
+    const dist = Math.max(distH, distW) * 1.25 + 2;
+    camera.position.set(0, 0, dist);
+    camera.lookAt(0, 0, 0);
+  }
+
+  // --- Timer -------------------------------------------------------------
+
+  function startTimer() {
+    startTime = Date.now();
+    if (timerId) clearInterval(timerId);
+    timerId = setInterval(updateTimer, 500);
+    updateTimer();
+  }
+
+  function updateTimer() {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    timeEl.textContent = `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  function stopTimer() {
+    if (timerId) { clearInterval(timerId); timerId = null; }
+  }
+
+  function updateHUD() {
+    movesEl.textContent = moves;
+    matchesEl.textContent = `${matchesFound}/${totalPairs}`;
+  }
+
+  // --- Interaction (raycasting) -----------------------------------------
+
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+
+  function onPointerDown(clientX, clientY) {
+    if (busy || gameOver || dragMoved) return;
+    pointer.x = (clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const meshes = cards.map((c) => c.mesh);
+    const hits = raycaster.intersectObjects(meshes, false);
+    if (hits.length === 0) return;
+    const card = hits[0].object.userData.card;
+    tryFlip(card);
+  }
+
+  function tryFlip(card) {
+    if (card.matched || card.flipped) return;
+    if (firstPick && secondPick) return;
+
+    card.flipped = true;
+    card.targetRot = Math.PI;
+
+    if (!firstPick) {
+      firstPick = card;
+    } else {
+      secondPick = card;
+      moves++;
+      updateHUD();
+      busy = true;
+      setTimeout(resolvePair, 750);
+    }
+  }
+
+  function resolvePair() {
+    if (firstPick.symbol === secondPick.symbol) {
+      firstPick.matched = true;
+      secondPick.matched = true;
+      matchesFound++;
+      updateHUD();
+      firstPick = secondPick = null;
+      busy = false;
+      if (matchesFound === totalPairs) win();
+    } else {
+      // flip both back
+      firstPick.flipped = false;
+      secondPick.flipped = false;
+      firstPick.targetRot = 0;
+      secondPick.targetRot = 0;
+      firstPick = secondPick = null;
+      busy = false;
+    }
+  }
+
+  function win() {
+    gameOver = true;
+    stopTimer();
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    winText.textContent = `Solved in ${moves} moves and ${m}:${s.toString().padStart(2, "0")}.`;
+    setTimeout(() => overlay.classList.add("show"), 400);
+  }
+
+  // --- Pointer / drag-to-rotate camera orbit ----------------------------
+
+  let dragging = false;
+  let dragMoved = false;
+  let lastX = 0, lastY = 0;
+  let orbitX = 0, orbitY = 0; // target orbit angles
+
+  function pointerDown(e) {
+    const p = e.touches ? e.touches[0] : e;
+    dragging = true;
+    dragMoved = false;
+    lastX = p.clientX;
+    lastY = p.clientY;
+  }
+
+  function pointerMove(e) {
+    if (!dragging) return;
+    const p = e.touches ? e.touches[0] : e;
+    const dx = p.clientX - lastX;
+    const dy = p.clientY - lastY;
+    if (Math.abs(dx) + Math.abs(dy) > 4) dragMoved = true;
+    orbitY += dx * 0.005;
+    orbitX += dy * 0.005;
+    orbitX = Math.max(-0.6, Math.min(0.6, orbitX));
+    orbitY = Math.max(-0.8, Math.min(0.8, orbitY));
+    lastX = p.clientX;
+    lastY = p.clientY;
+  }
+
+  function pointerUp(e) {
+    if (!dragging) return;
+    dragging = false;
+    const p = (e.changedTouches ? e.changedTouches[0] : e);
+    if (!dragMoved) onPointerDown(p.clientX, p.clientY);
+  }
+
+  renderer.domElement.addEventListener("mousedown", pointerDown);
+  window.addEventListener("mousemove", pointerMove);
+  window.addEventListener("mouseup", pointerUp);
+  renderer.domElement.addEventListener("touchstart", (e) => { pointerDown(e); }, { passive: true });
+  window.addEventListener("touchmove", pointerMove, { passive: true });
+  window.addEventListener("touchend", pointerUp);
+
+  // --- Animation loop ----------------------------------------------------
+
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+
+    // Smoothly rotate cards toward their target.
+    for (const card of cards) {
+      const m = card.mesh;
+      m.rotation.y += (card.targetRot - m.rotation.y) * Math.min(1, dt * 12);
+
+      // Matched cards gently float up and spin.
+      if (card.matched) {
+        card.matchFloat += dt;
+        m.position.z = card.home.z + Math.sin(card.matchFloat * 2) * 0.15 + 0.3;
+        m.rotation.z = Math.sin(card.matchFloat * 1.5) * 0.08;
+      } else {
+        // ease back to home z (in case)
+        m.position.z += (card.home.z - m.position.z) * Math.min(1, dt * 10);
+      }
+    }
+
+    // Apply smooth camera orbit around the board.
+    const baseDist = camera.position.length();
+    const tx = Math.sin(orbitY) * baseDist;
+    const tz = Math.cos(orbitY) * Math.cos(orbitX) * baseDist;
+    const ty = Math.sin(orbitX) * baseDist;
+    camera.position.lerp(new THREE.Vector3(tx, ty, tz), Math.min(1, dt * 6));
+    camera.lookAt(0, 0, 0);
+
+    renderer.render(scene, camera);
+  }
+
+  // --- Resize ------------------------------------------------------------
+
+  function onResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    const level = document.getElementById("difficulty").value;
+    const { cols, rows } = DIFFICULTY[level];
+    fitCameraToBoard(cols, rows);
+  }
+  window.addEventListener("resize", onResize);
+
+  // --- Wire up controls --------------------------------------------------
+
+  document.getElementById("newGame").addEventListener("click", () => {
+    orbitX = 0; orbitY = 0;
+    newGame();
+  });
+  document.getElementById("playAgain").addEventListener("click", () => {
+    orbitX = 0; orbitY = 0;
+    newGame();
+  });
+  document.getElementById("difficulty").addEventListener("change", () => {
+    orbitX = 0; orbitY = 0;
+    newGame();
+  });
+
+  // --- Init --------------------------------------------------------------
+
+  newGame();
+  animate();
+})();
+</script>
+</body>
+</html>

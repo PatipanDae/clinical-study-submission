@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audit Log — Study Document Submissions</title>
+  <style>
+    :root{--bg:#f1f5f9;--surface:#fff;--surface2:#f8fafc;--border:#e2e8f0;--text:#0f172a;--muted:#64748b;--brand:#2563eb;--shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px -14px rgba(16,24,40,.25);--r:12px;}
+    *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--text);font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;border-top:4px solid var(--brand);}
+    a{color:var(--brand);text-decoration:none;} .topbar{background:linear-gradient(180deg,#fff,#f8fafc);border-bottom:1px solid var(--border);box-shadow:var(--shadow);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;}
+    h1{font-size:1.08rem;margin:0;letter-spacing:-.2px;} .right{display:flex;gap:14px;align-items:center;font-size:.85rem;}.btn{background:#fff;border:1px solid var(--border);border-radius:9px;padding:8px 14px;color:#475569;font-weight:600;cursor:pointer;font-size:.85rem;}.btn:hover{background:#eef2f7;}
+    .wrap{max-width:1320px;margin:0 auto;padding:26px 24px;}.head{margin-bottom:20px;}.head h2{font-size:1.35rem;margin:0 0 5px;}.head p{margin:0;color:var(--muted);font-size:.88rem;}
+    .filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:14px;display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:16px;}.field{flex:1;min-width:180px;}.field label{display:block;color:#475569;font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:0 0 5px;}.field input,.field select{width:100%;padding:9px 11px;background:#fff;border:1px solid var(--border);border-radius:9px;color:var(--text);font:inherit;font-size:.88rem;}.field input:focus,.field select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+    .summary{font-size:.82rem;color:var(--muted);margin:10px 0;}.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:auto;}table{width:100%;border-collapse:collapse;font-size:.84rem;min-width:850px;}th{text-align:left;background:var(--surface2);color:#64748b;font-size:.7rem;text-transform:uppercase;letter-spacing:.45px;padding:11px 13px;border-bottom:1px solid var(--border);white-space:nowrap;}td{padding:11px 13px;border-bottom:1px solid #eef2f7;vertical-align:top;}tr:last-child td{border-bottom:none;}tr:hover td{background:#f8fafc;}.when{white-space:nowrap;color:#475569;font-variant-numeric:tabular-nums;}.actor{font-weight:700;white-space:nowrap;}.sid{color:var(--brand);font-weight:700;white-space:nowrap;}.action{display:inline-block;border-radius:999px;padding:3px 9px;font-size:.72rem;font-weight:700;background:#e8f0ff;color:#1d4ed8;border:1px solid #bcd3ff;white-space:nowrap;}.details{color:#475569;max-width:430px;line-height:1.45;word-break:break-word;}.empty{padding:32px;text-align:center;color:var(--muted);font-style:italic;}.error{color:#b91c1c;}.detail-key{font-weight:700;color:#334155;}.new{color:#15803d;font-weight:600;}.old{color:#b45309;}.audit-note{background:#e8f0ff;border:1px solid #bcd3ff;color:#1e40af;border-radius:9px;padding:10px 12px;font-size:.8rem;margin-bottom:16px;}
+    @media(max-width:640px){.topbar{padding:12px 16px;}.right a{display:none;}.wrap{padding:20px 14px;}.filters{display:block;}.field{margin-bottom:10px;}}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Study Document Submissions — Audit Log</h1>
+    <div class="right"><a href="/app/review" id="reviewLink">← Review Panel</a><a href="/app/helpdesk" id="hdLink">Help Desk</a><a href="/app/" id="submissionLink">Submission form</a><button class="btn" id="refresh">Refresh</button></div>
+  </div>
+  <main class="wrap">
+    <section class="head"><h2>Audit Trail</h2><p>Append-only history of key submission, review, revision, AI, help desk, and deletion actions.</p></section>
+    <div class="audit-note">Audit events are read-only. Each record captures the event time, actor, action, linked submission (if applicable), and contextual details.</div>
+    <section class="filters">
+      <div class="field"><label for="search">Search</label><input id="search" placeholder="Actor, action, protocol, message..." /></div>
+      <div class="field"><label for="submissionId">Submission ID</label><input id="submissionId" inputmode="numeric" placeholder="e.g. 16" /></div>
+      <div class="field"><label for="action">Action</label><select id="action"><option value="">All actions</option><option value="submission_created">Submission created</option><option value="revision_submitted">Revision submitted</option><option value="review_updated">Review updated</option><option value="ai_analysis_queued">AI queued</option><option value="ai_analysis_completed">AI completed</option><option value="ai_analysis_failed">AI failed</option><option value="helpdesk_ticket_created">Help desk ticket</option><option value="helpdesk_message_sent">Help desk message</option><option value="helpdesk_staff_replied">Help desk reply</option><option value="submission_deleted">Submission deleted</option></select></div>
+      <button class="btn" id="clear">Clear filters</button>
+    </section>
+    <div class="summary" id="summary">Loading audit events...</div>
+    <div class="table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Submission</th><th>Details</th></tr></thead><tbody id="tbody"></tbody></table></div>
+  </main>
+  <script>
+    const BASE=(function(){const p=location.pathname;const routes=['/audit','/audit.html'];for(const r of routes){if(p===r||p.endsWith(r))return p.slice(0,p.length-r.length);}return p.endsWith('/')?p.slice(0,-1):p;})();
+    const u=p=>BASE+p; const g=p=>u(p)+(p.includes('?')?'&':'?')+'_='+Date.now();
+    document.getElementById('reviewLink').href=u('/review');document.getElementById('submissionLink').href=u('/');document.getElementById('hdLink').href=u('/helpdesk');
+    let all=[]; const $=id=>document.getElementById(id);
+    function esc(v){const d=document.createElement('div');d.textContent=v==null?'':String(v);return d.innerHTML;}
+    function fmt(iso){if(!iso)return '—';const d=new Date(iso);return isNaN(d)?iso:d.toLocaleString();}
+    function label(action){return action.replaceAll('_',' ');}
+    function detailHtml(d){
+      const pairs=[];
+      Object.entries(d||{}).forEach(([k,v])=>{
+        if(v==null||v==='')return;
+        let val=Array.isArray(v)?v.join(', '):typeof v==='object'?JSON.stringify(v):String(v);
+        if(k==='previousStatus')val='<span class="old">'+esc(val)+'</span>';
+        else if(k==='newStatus')val='<span class="new">'+esc(val)+'</span>';
+        else val=esc(val);
+        pairs.push('<span class="detail-key">'+esc(k)+':</span> '+val);
+      });
+      return pairs.join(' · ')||'—';
+    }
+    function render(){
+      const q=$('search').value.trim().toLowerCase();const sid=$('submissionId').value.trim();const act=$('action').value;
+      const rows=all.filter(x=>{
+        const hay=[x.actor,x.action,x.submissionId,JSON.stringify(x.details||{})].join(' ').toLowerCase();
+        return (!q||hay.includes(q))&&(!sid||String(x.submissionId||'')===sid)&&(!act||x.action===act);
+      });
+      $('summary').textContent=rows.length+' of '+all.length+' audit event'+(all.length===1?'':'s');
+      $('tbody').innerHTML=rows.length?rows.map(x=>'<tr><td class="when">'+esc(fmt(x.createdAt))+'</td><td class="actor">'+esc(x.actor)+'</td><td><span class="action">'+esc(label(x.action))+'</span></td><td class="sid">'+(x.submissionId?'#'+esc(x.submissionId):'—')+'</td><td class="details">'+detailHtml(x.details)+'</td></tr>').join(''):'<tr><td colspan="5" class="empty">No audit events match the current filters.</td></tr>';
+    }
+    function authHeaders(){var t=sessionStorage.getItem('staff_token');return t?{Authorization:'Bearer '+t}:{};}
+    async function load(){
+      try{
+        const r=await fetch(g('/api/audit?limit=500'),{headers:authHeaders()});
+        if(r.status===401||r.status===403){location.href=u('/login?next=/audit');return;}
+        const d=await r.json();all=d.logs||[];render();
+      }catch(e){$('summary').innerHTML='<span class="error">Could not load audit log: '+esc(e.message)+'</span>';}
+    }
+    ['search','submissionId','action'].forEach(id=>$(id).addEventListener(id==='action'?'change':'input',render));
+    $('clear').addEventListener('click',()=>{$('search').value='';$('submissionId').value='';$('action').value='';render();});$('refresh').addEventListener('click',load);load();
+  </script>
+</body>
+</html>

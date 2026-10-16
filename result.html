@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submission Result</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a; color: #e2e8f0;
+      display: flex; align-items: flex-start; justify-content: center;
+      min-height: 100vh; padding: 40px 20px;
+    }
+    a { color: #60a5fa; }
+    .container { width: 100%; max-width: 520px; }
+    .card { background: #1e293b; border-radius: 12px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    h1 { margin: 0 0 4px; font-size: 1.4rem; }
+    p.subtitle { margin: 0 0 22px; color: #94a3b8; font-size: 0.9rem; }
+    .lookup { display:flex; gap:10px; align-items:stretch; }
+    .lookup input {
+      flex:1; min-width:0; padding:11px 13px; border:1px solid #334155; border-radius:8px;
+      background:#0f172a; color:#e2e8f0; font-size:1rem; line-height:1.3;
+    }
+    .lookup input:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,0.25); }
+    .lookup button {
+      flex:0 0 auto; min-width:120px; border:none; border-radius:8px; background:#3b82f6; color:#fff;
+      font-weight:600; padding:11px 22px; font-size:0.95rem; line-height:1.3; cursor:pointer;
+    }
+    .lookup button:hover { background:#2563eb; }
+    .msg { margin-top:16px; font-size:0.88rem; min-height:1em; }
+    .msg.error { color:#f87171; }
+
+    .result { margin-top:22px; display:none; }
+    .result .ref { font-size:0.8rem; color:#64748b; }
+    .result h2 { font-size:1.1rem; margin:4px 0 14px; }
+    /* timeline */
+    .timeline { display:flex; margin:18px 0 6px; }
+    .tl-step { flex:1; text-align:center; position:relative; }
+    .tl-step .dot {
+      width:26px; height:26px; border-radius:50%; margin:0 auto;
+      background:#0f172a; border:2px solid #334155; color:#64748b;
+      display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700; position:relative; z-index:1;
+    }
+    /* connector line between steps */
+    .tl-step:not(:first-child)::before {
+      content:""; position:absolute; top:12px; left:-50%; width:100%; height:3px; background:#334155; z-index:0;
+    }
+    .tl-step.done:not(:first-child)::before,
+    .tl-step.current:not(:first-child)::before { background:#3b82f6; }
+    .tl-step.done .dot { background:#3b82f6; border-color:#3b82f6; color:#fff; }
+    .tl-step.current .dot { border-color:#3b82f6; color:#93c5fd; box-shadow:0 0 0 4px rgba(59,130,246,.25); }
+    .tl-step.done.final-ok .dot, .tl-step.current.final-ok .dot { background:#15803d; border-color:#15803d; color:#fff; }
+    .tl-step.current.final-bad .dot { background:#b91c1c; border-color:#b91c1c; color:#fff; box-shadow:0 0 0 4px rgba(185,28,28,.25); }
+    .tl-step.current.final-warn .dot { background:#c2410c; border-color:#c2410c; color:#fff; box-shadow:0 0 0 4px rgba(194,65,12,.25); }
+    .tl-label { font-size:0.72rem; margin-top:6px; color:#94a3b8; line-height:1.3; }
+    .tl-step.current .tl-label, .tl-step.done .tl-label { color:#e2e8f0; }
+    .tl-date { font-size:0.66rem; color:#64748b; margin-top:2px; }
+    .status-pill { display:inline-block; padding:6px 16px; border-radius:999px; font-size:0.95rem; font-weight:700; }
+    .st-Pending { background:#422006; color:#fbbf24; border:1px solid #a16207; }
+    .st-Approved { background:#052e1a; color:#4ade80; border:1px solid #15803d; }
+    .st-Rejected { background:#450a0a; color:#f87171; border:1px solid #b91c1c; }
+    .st-Needs-revision { background:#422006; color:#fdba74; border:1px solid #c2410c; }
+    .st-In-review { background:#172554; color:#93c5fd; border:1px solid #1d4ed8; }
+    .status-pill.small { padding:2px 10px; font-size:0.75rem; font-weight:700; }
+    .track-item { padding:10px 0; border-bottom:1px solid #273449; }
+    .track-item:last-child { border-bottom:none; }
+    .track-item .track-name { display:inline-block; min-width:150px; font-weight:600; font-size:0.9rem; }
+    .track-item .track-when { font-size:0.72rem; color:#64748b; margin-left:10px; }
+    .field { margin-top:16px; }
+    .field .lbl { font-size:0.78rem; color:#94a3b8; margin-bottom:4px; }
+    .field .val { font-size:0.92rem; }
+    .comment-box { background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px 14px; font-size:0.9rem; white-space:pre-wrap; }
+    .footer-links { margin-top:24px; text-align:center; font-size:0.8rem; color:#64748b; }
+    .resubmit { margin-top:22px; padding-top:20px; border-top:1px solid #334155; }
+    .resubmit h3 { margin:0 0 4px; font-size:1.05rem; }
+    .resubmit .hint { color:#94a3b8; font-size:0.82rem; margin:0 0 14px; }
+    .resubmit .rf-label { display:block; font-size:0.8rem; color:#cbd5e1; font-weight:600; margin:12px 0 5px; }
+    .resubmit .req { color:#f87171; }
+    .resubmit textarea {
+      width:100%; min-height:70px; padding:10px 12px; border:1px solid #334155;
+      border-radius:8px; background:#0f172a; color:#e2e8f0; font-size:0.9rem; font-family:inherit; resize:vertical;
+    }
+    .resubmit input[type="file"] { width:100%; font-size:0.82rem; color:#94a3b8; }
+    .resubmit input[type="file"]::file-selector-button {
+      background:#334155; color:#e2e8f0; border:none; padding:7px 12px; border-radius:6px; margin-right:10px; cursor:pointer; font-size:0.82rem;
+    }
+    .resubmit button {
+      width:100%; margin-top:16px; padding:11px; border:none; border-radius:8px;
+      background:#3b82f6; color:#fff; font-size:0.95rem; font-weight:600; cursor:pointer;
+    }
+    .resubmit button:hover { background:#2563eb; }
+    .resubmit button:disabled { opacity:0.6; cursor:default; }
+    .rf-err { color:#f87171; font-size:0.78rem; margin-top:4px; min-height:1em; }
+    .clear-file { background:transparent; border:1px solid #475569; color:#94a3b8; border-radius:6px; padding:3px 9px; font-size:0.72rem; cursor:pointer; margin-top:5px; }
+    .clear-file:hover { background:#334155; color:#e2e8f0; }
+    .resubmit .keep { color:#64748b; font-weight:400; font-size:0.72rem; }
+  </style>
+  <style id="enterprise-theme">
+/* ============================================================================
+   Enterprise SaaS theme — LIGHT MODE
+   Clinical Research Administration Platform. Visual layer loaded LAST so it
+   refines look WITHOUT changing markup/content/JS. Overrides the pages'
+   hardcoded dark colors to a clean, professional white/slate palette.
+   ============================================================================ */
+
+:root {
+  --app-bg:        #f1f5f9;   /* page background (soft gray) */
+  --surface-1:     #ffffff;   /* cards / panels */
+  --surface-2:     #f8fafc;   /* inputs / insets */
+  --surface-3:     #eef2f7;   /* hover / elevated rows */
+  --border:        #e2e8f0;
+  --border-soft:   #eef2f7;
+  --text:          #0f172a;
+  --text-muted:    #475569;
+  --text-dim:      #94a3b8;
+  --brand:         #2563eb;
+  --brand-strong:  #1d4ed8;
+  --brand-tint:    rgba(37,99,235,.12);
+  --ok:#15803d; --ok-bg:#e9f8ef; --ok-bd:#86efac;
+  --warn:#b45309; --warn-bg:#fef5e7; --warn-bd:#fcd9a5;
+  --danger:#b91c1c; --danger-bg:#fdecec; --danger-bd:#f6b7b7;
+  --info:#1d4ed8; --info-bg:#e8f0ff; --info-bd:#bcd3ff;
+  --radius:12px; --radius-sm:9px;
+  --shadow:0 1px 2px rgba(16,24,40,.06), 0 8px 24px -14px rgba(16,24,40,.25);
+  --font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans Thai",sans-serif;
+}
+
+/* ---- base ---- */
+body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(37,99,235,.05), transparent 60%),
+    var(--app-bg) !important;
+  color: var(--text) !important;
+  font-family: var(--font) !important;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: .1px;
+  border-top: 4px solid var(--brand) !important;
+}
+a { color: var(--brand) !important; }
+
+/* ---- full-width layout (use the whole screen) ---- */
+.container { width: 100% !important; max-width: 1100px !important; margin: 0 auto !important; }
+.wrap { max-width: 1320px !important; margin: 0 auto !important; }
+/* give centered single-card pages (submission/result) breathing room + top gap */
+body { padding-left: 24px; padding-right: 24px; }
+
+/* ---- generic dark-surface overrides (catch hardcoded colors) ---- */
+.card, .table-wrap, .stat, .ai-panel, .login-card,
+.container .card, .doc-field, .track-box, .hd-tickets, .ai-rec,
+.comment-box, .resub-note, .conditional, .choice, .section-note {
+  background: var(--surface-1) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+.card, .table-wrap, .stat, .ai-panel, .login-card {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+/* text colors */
+h1, h2, h3, .title, .doc-name, .track-name, .tl-label, .hd-tsub { color: var(--text) !important; }
+.subtitle, p.subtitle, .muted, .count-note, .section-label, .lbl,
+.ai-h, .meta, .card .sub, .note-hint, .hint, .ai-detail, .track-meta,
+.tl-date, .hd-th .muted { color: var(--text-muted) !important; }
+.field-label, label, .rf-label { color: #334155 !important; }
+
+/* ---- headings / section titles ---- */
+h1 { letter-spacing: -.2px; font-weight: 700; }
+.section-title {
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--border) !important;
+  font-weight: 700 !important;
+}
+.section-title::before {
+  content: ""; display: inline-block; width: 3px; height: 1em;
+  background: var(--brand); border-radius: 2px; margin-right: 9px; vertical-align: -2px;
+}
+
+/* ---- top bar ---- */
+.topbar {
+  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: var(--shadow);
+}
+.topbar h1 { font-size: 1.05rem; color: var(--text) !important; }
+
+/* ---- inputs ---- */
+input[type="text"], input[type="email"], input[type="password"],
+textarea, select, .lookup input, .toolbar input, .toolbar select,
+.review-box select, .review-box textarea, .hd-reply input, .hd-row input,
+.resubmit textarea, .resubmit input {
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text) !important;
+}
+input::placeholder, textarea::placeholder { color: #94a3b8 !important; }
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px var(--brand-tint) !important;
+}
+
+/* ---- buttons ---- */
+button[type="submit"], .save-btn, .lookup button, .resubmit button, .hd-send, .hd-fab {
+  background: linear-gradient(180deg, var(--brand), var(--brand-strong)) !important;
+  border: none !important; color: #fff !important;
+  border-radius: var(--radius-sm) !important; font-weight: 600 !important;
+  box-shadow: var(--shadow);
+}
+button[type="submit"]:hover, .save-btn:hover, .lookup button:hover,
+.resubmit button:hover, .hd-send:hover, .hd-fab:hover { filter: brightness(1.06); }
+.btn-ghost, .clear-btn, .clear-file, .hd-esc, .hd-view {
+  background: #fff !important; border: 1px solid var(--border) !important; color: var(--text-muted) !important;
+}
+.btn-ghost:hover, .clear-btn:hover, .clear-file:hover, .hd-esc:hover { background: var(--surface-3) !important; color: var(--text) !important; }
+.del-btn { background: #fdecec !important; color: #b91c1c !important; border: 1px solid #f6b7b7 !important; }
+.del-btn:hover { background: #fbd9d9 !important; }
+
+/* ---- status badges ---- */
+.status-pill, .ai-badge, .hd-tstatus, .badge, .pill {
+  border-radius: 999px !important; font-weight: 700 !important;
+}
+.st-Approved  { background: var(--ok-bg)!important;    color: var(--ok)!important;    border:1px solid var(--ok-bd)!important; }
+.st-Rejected  { background: var(--danger-bg)!important; color: var(--danger)!important; border:1px solid var(--danger-bd)!important; }
+.st-Pending   { background: var(--warn-bg)!important;  color: var(--warn)!important;  border:1px solid var(--warn-bd)!important; }
+.st-Needs-revision { background: var(--warn-bg)!important; color:#c2410c!important;   border:1px solid var(--warn-bd)!important; }
+.st-In-review { background: var(--info-bg)!important;  color: var(--info)!important;  border:1px solid var(--info-bd)!important; }
+.badge { background: var(--surface-2)!important; border:1px solid var(--border)!important; color: var(--text-muted)!important; }
+
+/* ---- stat tiles ---- */
+.stats { gap: 16px; }
+.stat { padding: 18px !important; position: relative; overflow: hidden; }
+.stat::after { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background: var(--brand); }
+.stat .num { color: var(--brand) !important; font-weight: 800 !important; letter-spacing: -.5px; }
+.stat .lbl { color: var(--text-muted) !important; text-transform: uppercase; letter-spacing: .5px; font-size: .7rem !important; }
+
+/* ---- data table ---- */
+table thead th { background: var(--surface-2) !important; color: var(--text-muted) !important; border-bottom: 1px solid var(--border) !important; }
+tbody td { border-bottom: 1px solid var(--border-soft) !important; color: var(--text) !important; }
+tbody tr.main-row:hover { background: var(--surface-3) !important; }
+tbody tr.expanded-row > td { background: #f8fafc !important; }
+.id-cell { color: var(--text-dim) !important; }
+.title-cell .th { color: var(--text-muted) !important; }
+
+/* ---- detail / review ---- */
+.detail { padding: 18px 20px !important; }
+.track-box { background: var(--surface-2) !important; border: 1px solid var(--border) !important; }
+.review-box { border-top: 1px solid var(--border) !important; }
+.row strong { color: #1d4ed8 !important; }
+
+/* ---- AI panel ---- */
+.ai-panel { background: var(--surface-2) !important; }
+.ai-rec { background: #fff !important; }
+.ai-yes { color: var(--ok) !important; } .ai-no { color: var(--danger) !important; }
+.ai-src { color: var(--brand) !important; background: var(--info-bg) !important; border: 1px solid var(--info-bd) !important; }
+.ai-sum, .ai-analyzed { color: var(--text-muted) !important; }
+
+/* ---- timeline ---- */
+.tl-step .dot { background: #fff !important; border-color: var(--border) !important; color: var(--text-dim) !important; }
+.tl-step.done .dot, .tl-step.current .dot { background: var(--brand) !important; border-color: var(--brand) !important; color: #fff !important; box-shadow: 0 0 0 4px var(--brand-tint); }
+.tl-step:not(:first-child)::before { background: var(--border) !important; }
+.tl-step.done:not(:first-child)::before, .tl-step.current:not(:first-child)::before { background: var(--brand) !important; }
+.tl-label { color: var(--text) !important; }
+
+/* ---- help desk chat widget (light) ---- */
+.hd-panel { background: #fff !important; border: 1px solid var(--border) !important; box-shadow: 0 10px 40px rgba(16,24,40,.18) !important; }
+.hd-head { background: var(--surface-2) !important; border-bottom: 1px solid var(--border) !important; }
+.hd-head .t { color: var(--text) !important; }
+.hd-body { background: #fff !important; }
+.hd-foot { background: var(--surface-2) !important; border-top: 1px solid var(--border) !important; }
+.hd-bot { background: var(--surface-2) !important; color: var(--text) !important; border: 1px solid var(--border) !important; }
+.hd-user { background: var(--brand) !important; color: #fff !important; }
+.hd-staff { background: var(--ok-bg) !important; color: #166534 !important; border: 1px solid var(--ok-bd) !important; }
+
+/* ---- messages ---- */
+.success { background: var(--ok-bg) !important; border: 1px solid var(--ok-bd) !important; color: #166534 !important; }
+.error, .rf-err { color: #dc2626 !important; }
+
+/* scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Check Submission Result</h1>
+      <p class="subtitle">Enter the reference ID you received when you submitted.</p>
+
+      <div class="lookup">
+        <input type="text" id="idInput" inputmode="numeric" placeholder="Reference ID (e.g. 1)" />
+        <button id="lookupBtn">Check</button>
+      </div>
+      <div class="msg" id="msg"></div>
+
+      <div class="result" id="result">
+        <div class="ref" id="refLine"></div>
+        <h2 id="titleLine"></h2>
+        <span class="status-pill" id="statusPill"></span>
+
+        <div class="timeline" id="timeline"></div>
+
+        <div class="field">
+          <div class="lbl">Protocol No.</div>
+          <div class="val" id="protocolLine"></div>
+        </div>
+        <div class="field">
+          <div class="lbl">Department reviews</div>
+          <div id="tracksLine"></div>
+        </div>
+        <div class="field">
+          <div class="lbl">Submitted</div>
+          <div class="val" id="submittedLine"></div>
+        </div>
+      </div>
+
+      <!-- Resubmission form: shown only when revisions are requested / rejected -->
+      <div id="resubmitBox" class="resubmit" style="display:none;">
+        <h3>แก้ไขและส่งใหม่ / Revise &amp; resubmit</h3>
+        <p class="hint">อัปโหลด<strong>เฉพาะไฟล์ที่ต้องการเปลี่ยน</strong> — ช่องที่เว้นว่างจะใช้ไฟล์เดิม และอธิบายสิ่งที่แก้ไขให้ผู้พิจารณาทราบ</p>
+        <div id="resubmitMsg" class="msg"></div>
+        <form id="resubmitForm">
+          <label class="rf-label">สิ่งที่แก้ไข (Response to reviewer) <span class="req">*</span></label>
+          <textarea id="resubmitNote" placeholder="อธิบายว่าคุณแก้ไขอะไรบ้าง..."></textarea>
+          <div class="rf-err" id="resubmitNoteErr"></div>
+
+          <label class="rf-label">Cover letter <span class="keep">(เว้นว่าง = ใช้ไฟล์เดิม)</span></label>
+          <input type="file" name="docCover" accept=".pdf,.doc,.docx" />
+          <button type="button" class="clear-file" data-target="docCover">✕ clear</button>
+
+          <label class="rf-label">Clinical trial agreement (Draft) <span class="keep">(เว้นว่าง = ใช้ไฟล์เดิม)</span></label>
+          <input type="file" name="docCTA" accept=".pdf,.doc,.docx" />
+          <button type="button" class="clear-file" data-target="docCTA">✕ clear</button>
+
+          <label class="rf-label">Protocol <span class="keep">(เว้นว่าง = ใช้ไฟล์เดิม)</span></label>
+          <input type="file" name="docProtocol" accept=".pdf,.doc,.docx" />
+          <button type="button" class="clear-file" data-target="docProtocol">✕ clear</button>
+
+          <label class="rf-label">SIRB/EC Certificate of approval <span class="keep">(เว้นว่าง = ใช้ไฟล์เดิม)</span></label>
+          <input type="file" name="docSIRB" accept=".pdf,.doc,.docx" />
+          <button type="button" class="clear-file" data-target="docSIRB">✕ clear</button>
+
+          <label class="rf-label">Letter — submitted to SIRB/EC <span class="keep">(เว้นว่าง = ใช้ไฟล์เดิม)</span></label>
+          <input type="file" name="sirbSubmittedLetter" accept=".pdf,.doc,.docx" />
+          <button type="button" class="clear-file" data-target="sirbSubmittedLetter">✕ clear</button>
+
+          <button type="submit">ส่งฉบับแก้ไข (Resubmit)</button>
+        </form>
+      </div>
+
+      <div class="footer-links">
+        <a class="navlink" data-path="/" href="/">← Submission form</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BASE = (function () {
+      var p = window.location.pathname;
+      var routes = ["/index.html", "/submission.html", "/admin", "/admin.html",
+                    "/review", "/review.html", "/result-preview", "/result-preview.html",
+                    "/result", "/result.html"];
+      for (var i = 0; i < routes.length; i++) {
+        if (p === routes[i] || p.endsWith(routes[i])) return p.slice(0, p.length - routes[i].length);
+      }
+      if (p.endsWith("/")) return p.slice(0, -1);
+      return p;
+    })();
+    function u(path) { return BASE + path; }
+    // GET helper that defeats CDN/proxy caching by appending a timestamp.
+    function g(path) { return u(path) + (path.indexOf("?") === -1 ? "?" : "&") + "_=" + Date.now(); }
+
+    const idInput = document.getElementById("idInput");
+    const msg = document.getElementById("msg");
+    const result = document.getElementById("result");
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str == null ? "" : str;
+      return div.innerHTML;
+    }
+    function statusClass(s) { return "st-" + String(s || "Pending").replace(/\s+/g, "-"); }
+
+    function fmtDate(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      return isNaN(d) ? iso : d.toLocaleString();
+    }
+
+    function statusMessage(status) {
+      switch (status) {
+        case "Approved": return "Your submission has been approved.";
+        case "Rejected": return "Your submission was not approved. See the comments below.";
+        case "Needs revision": return "Revisions are requested. See the comments below.";
+        case "In review": return "Under review by the departments.";
+        default: return "Your submission is pending review.";
+      }
+    }
+
+    async function lookup() {
+      const id = idInput.value.trim();
+      msg.className = "msg";
+      msg.textContent = "";
+      result.style.display = "none";
+      if (!id || isNaN(Number(id))) {
+        msg.className = "msg error";
+        msg.textContent = "Please enter a valid numeric reference ID.";
+        return;
+      }
+      msg.textContent = "Looking up...";
+      try {
+        const res = await fetch(g("/api/submission?id=" + encodeURIComponent(id)));
+        const data = await res.json().catch(function () { return {}; });
+        if (res.status === 404) {
+          msg.className = "msg error";
+          msg.textContent = "No submission found with ID #" + escapeHtml(id) + ".";
+          return;
+        }
+        if (!res.ok) {
+          msg.className = "msg error";
+          msg.textContent = data.error || ("Error (HTTP " + res.status + ")");
+          return;
+        }
+        msg.textContent = "";
+        render(data);
+      } catch (err) {
+        msg.className = "msg error";
+        msg.textContent = "Network error: " + err.message + ". Is the server running?";
+      }
+    }
+
+    function renderTimeline(d) {
+      var status = d.status || "Pending";
+      // Latest review date across tracks (for the "under review" stamp)
+      var lastReview = null;
+      (d.reviews || []).forEach(function (r) {
+        if (r.reviewedAt && (!lastReview || r.reviewedAt > lastReview)) lastReview = r.reviewedAt;
+      });
+
+      // Determine current stage index (0-3) from status.
+      // 0 Submitted, 1 Under review, 2 Decision, 3 Completed
+      var current;
+      if (status === "Pending") current = 0;
+      else if (status === "In review") current = 1;
+      else if (status === "Needs revision" || status === "Rejected") current = 2;
+      else if (status === "Approved") current = 3;
+      else current = 0;
+
+      // Final-state styling for the decision/completed node
+      var finalClass = "";
+      if (status === "Approved") finalClass = "final-ok";
+      else if (status === "Rejected") finalClass = "final-bad";
+      else if (status === "Needs revision") finalClass = "final-warn";
+
+      var steps = [
+        { label: "ยื่นเอกสาร<br>Submitted", date: fmtDate(d.createdAt) },
+        { label: "กำลังพิจารณา<br>Under review", date: (current >= 1 && lastReview) ? fmtDate(lastReview) : "" },
+        { label: "ผลพิจารณา<br>Decision", date: (current >= 2 && lastReview) ? fmtDate(lastReview) : "" },
+        { label: "เสร็จสิ้น<br>Completed", date: (status === "Approved") ? fmtDate(lastReview || d.createdAt) : "" },
+      ];
+
+      var html = steps.map(function (st, i) {
+        var cls = "tl-step";
+        if (i < current) cls += " done";
+        else if (i === current) cls += " current";
+        // apply final color to the stage that represents the decision/outcome
+        if ((i === 2 || i === 3) && finalClass && i === current) cls += " " + finalClass;
+        if (i === 3 && status === "Approved") cls += " done final-ok";
+        var mark = (i < current || (i === 3 && status === "Approved")) ? "✓" : (i + 1);
+        return '<div class="' + cls + '">' +
+                 '<div class="dot">' + mark + "</div>" +
+                 '<div class="tl-label">' + st.label + "</div>" +
+                 (st.date ? '<div class="tl-date">' + escapeHtml(st.date) + "</div>" : "") +
+               "</div>";
+      }).join("");
+      document.getElementById("timeline").innerHTML = html;
+    }
+
+    function render(d) {
+      document.getElementById("refLine").textContent =
+        "Reference ID #" + d.id + ((d.revision && d.revision > 1) ? "  ·  Revision #" + d.revision : "");
+      document.getElementById("titleLine").textContent = d.titleEN || d.titleTH || "(untitled)";
+      const pill = document.getElementById("statusPill");
+      pill.textContent = (d.status || "Pending") + " — " + statusMessage(d.status || "Pending");
+      pill.className = "status-pill " + statusClass(d.status);
+      renderTimeline(d);
+      document.getElementById("protocolLine").textContent = d.protocolNo || "—";
+      document.getElementById("submittedLine").textContent = fmtDate(d.createdAt);
+
+      const tracksEl = document.getElementById("tracksLine");
+      const reviews = d.reviews || [];
+      if (!reviews.length) {
+        tracksEl.innerHTML = '<div class="val">—</div>';
+      } else {
+        tracksEl.innerHTML = reviews.map(function (r) {
+          const comment = r.comment
+            ? '<div class="comment-box" style="margin-top:6px;">' + escapeHtml(r.comment) + "</div>" : "";
+          const when = r.reviewedAt
+            ? '<span class="track-when">reviewed ' + escapeHtml(fmtDate(r.reviewedAt)) + "</span>" : "";
+          return (
+            '<div class="track-item">' +
+              '<span class="track-name">' + escapeHtml(r.track) + "</span>" +
+              '<span class="status-pill small ' + statusClass(r.status) + '">' + escapeHtml(r.status) + "</span>" +
+              when +
+              comment +
+            "</div>"
+          );
+        }).join("");
+      }
+      result.style.display = "block";
+
+      // Show the resubmit form only when revisions are requested / rejected.
+      currentId = d.id;
+      const canResubmit = (d.status === "Needs revision" || d.status === "Rejected");
+      const box = document.getElementById("resubmitBox");
+      box.style.display = canResubmit ? "block" : "none";
+      if (canResubmit) {
+        document.getElementById("resubmitForm").reset();
+        document.getElementById("resubmitMsg").textContent = "";
+        document.getElementById("resubmitNoteErr").textContent = "";
+      }
+    }
+
+    let currentId = null;
+
+    document.getElementById("lookupBtn").addEventListener("click", lookup);
+    idInput.addEventListener("keydown", function (e) { if (e.key === "Enter") lookup(); });
+
+    document.querySelectorAll("a.navlink").forEach(function (a) {
+      a.setAttribute("href", u(a.dataset.path));
+    });
+
+    // Clear a file input in the resubmit form
+    document.querySelectorAll('.clear-file').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var inp = document.querySelector('input[name="' + btn.dataset.target + '"]');
+        if (inp) inp.value = '';
+      });
+    });
+
+    // Resubmit (revise) handler
+    document.getElementById("resubmitForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const form = e.target;
+      const rmsg = document.getElementById("resubmitMsg");
+      const noteErr = document.getElementById("resubmitNoteErr");
+      rmsg.className = "msg"; rmsg.textContent = ""; noteErr.textContent = "";
+
+      const note = document.getElementById("resubmitNote").value.trim();
+      if (!note) { noteErr.textContent = "Please describe what you changed."; return; }
+
+      // Files are optional on resubmit — any field left blank keeps its existing file.
+      const fd = new FormData(form);
+      fd.append("id", currentId);
+      fd.append("resubmitNote", note);
+
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = "Submitting...";
+      try {
+        const res = await fetch(u("/api/resubmit"), { method: "POST", body: fd });
+        const data = await res.json().catch(function () { return {}; });
+        if (res.status === 201 && data.ok) {
+          rmsg.className = "msg";
+          rmsg.style.color = "#4ade80";
+          rmsg.textContent = "ส่งฉบับแก้ไขเรียบร้อย (revision #" + (data.revision || "?") + "). กำลังรอการพิจารณาใหม่.";
+          lookup();  // refresh the displayed status
+        } else if (res.status === 422 && data.fields) {
+          if (data.fields.resubmitNote) noteErr.textContent = data.fields.resubmitNote;
+          else { rmsg.className = "msg error"; rmsg.textContent = Object.values(data.fields)[0] || "Validation failed."; }
+        } else {
+          rmsg.className = "msg error";
+          rmsg.textContent = "Resubmit failed: " + (data.error || ("HTTP " + res.status));
+        }
+      } catch (err) {
+        rmsg.className = "msg error";
+        rmsg.textContent = "Network error: " + err.message;
+      } finally {
+        btn.disabled = false; btn.textContent = "ส่งฉบับแก้ไข (Resubmit)";
+      }
+    });
+
+    // Auto-lookup if ?id= is present in the URL
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("id")) {
+      idInput.value = params.get("id");
+      lookup();
+    }
+  </script>
+  <script>
+  (function(){
+    var p=window.location.pathname;
+    var routes=["/index.html","/submission.html","/admin","/admin.html","/review","/review.html","/result-preview","/result-preview.html","/result","/result.html"];
+    var base=p;
+    for(var i=0;i<routes.length;i++){ if(p===routes[i]||p.endsWith(routes[i])){ base=p.slice(0,p.length-routes[i].length); break; } }
+    if(base===p){ base = p.endsWith("/")?p.slice(0,-1):p; }
+    var s=document.createElement("script"); s.src=base+"/chat-widget.js"; s.defer=true; document.body.appendChild(s);
+  })();
+  </script>
+</body>
+</html>

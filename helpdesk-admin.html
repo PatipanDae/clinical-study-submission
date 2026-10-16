@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Help Desk — Study Document Submissions</title>
+  <style>
+    :root{--bg:#f1f5f9;--surface:#fff;--surface2:#f8fafc;--border:#e2e8f0;--text:#0f172a;--muted:#64748b;--brand:#2563eb;--brand2:#1d4ed8;--shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px -14px rgba(16,24,40,.25);--r:12px;}
+    *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--text);font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;border-top:4px solid var(--brand);}
+    a{color:var(--brand);text-decoration:none;}
+    .topbar{background:linear-gradient(180deg,#fff,#f8fafc);border-bottom:1px solid var(--border);box-shadow:var(--shadow);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;}
+    h1{font-size:1.08rem;margin:0;letter-spacing:-.2px;} .right{display:flex;gap:14px;align-items:center;font-size:.85rem;}
+    .btn{background:#fff;border:1px solid var(--border);border-radius:9px;padding:8px 14px;color:#475569;font-weight:600;cursor:pointer;font-size:.85rem;}.btn:hover{background:#eef2f7;}
+    .wrap{max-width:1100px;margin:0 auto;padding:26px 24px;}
+    .head{margin-bottom:18px;}.head h2{font-size:1.35rem;margin:0 0 5px;}.head p{margin:0;color:var(--muted);font-size:.88rem;}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
+    .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;position:relative;overflow:hidden;}
+    .stat::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--brand);}
+    .stat .num{font-size:1.6rem;font-weight:800;color:var(--brand);}.stat .lbl{color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-size:.7rem;margin-top:4px;}
+    .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+    .toolbar input,.toolbar select{padding:9px 11px;border:1px solid var(--border);border-radius:9px;background:#fff;color:var(--text);font:inherit;font-size:.88rem;}
+    .toolbar input{flex:1;min-width:220px;}.count-note{font-size:.8rem;color:var(--muted);margin-left:auto;}
+    .ticket{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:12px;}
+    .trow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+    .tsub{font-weight:700;font-size:.92rem;} .muted{color:var(--muted);font-weight:400;}
+    .tstatus{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap;}
+    .ts-awaiting_staff{background:#fef5e7;color:#b45309;border:1px solid #fcd9a5;}
+    .ts-answered{background:#e9f8ef;color:#15803d;border:1px solid #86efac;}
+    .ts-open{background:#e8f0ff;color:#1d4ed8;border:1px solid #bcd3ff;}
+    .ts-closed{background:#eef2f7;color:#64748b;border:1px solid #e2e8f0;}
+    .last{font-size:.8rem;color:var(--muted);margin-top:4px;}
+    .view{color:var(--brand);font-size:.8rem;cursor:pointer;font-weight:600;}
+    .thread{margin-top:12px;display:none;border-top:1px solid var(--border);padding-top:12px;}
+    .thread.open{display:block;}
+    .m{font-size:.84rem;margin:5px 0;padding:8px 11px;border-radius:9px;max-width:88%;white-space:pre-wrap;word-break:break-word;}
+    .m .who{font-size:.66rem;color:var(--muted);margin-bottom:2px;}
+    .m-user{background:#eff6ff;border:1px solid #bfdbfe;color:#0f172a;}
+    .m-bot{background:#f8fafc;border:1px solid #e2e8f0;color:#334155;}
+    .m-staff{background:#ecfdf5;border:1px solid #a7f3d0;color:#166534;margin-left:auto;}
+    .reply{display:flex;gap:8px;margin-top:10px;}
+    .reply input{flex:1;min-width:0;padding:9px 11px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#0f172a;font-size:.86rem;}
+    .reply button{flex:0 0 auto;background:linear-gradient(180deg,var(--brand),var(--brand2));color:#fff;border:none;border-radius:9px;padding:9px 16px;font-weight:600;cursor:pointer;font-size:.86rem;}
+    .empty{padding:30px;text-align:center;color:var(--muted);font-style:italic;}
+    .err{color:#b91c1c;}
+    @media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr);}.right a{display:none;}}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Study Document Submissions — Help Desk</h1>
+    <div class="right">
+      <a id="reviewLink" href="/app/review">Review Panel</a>
+      <a id="auditLink" href="/app/audit">Audit Log</a>
+      <button class="btn" id="refresh">Refresh</button>
+    </div>
+  </div>
+  <main class="wrap">
+    <div class="head"><h2>Support Tickets</h2><p>User questions from the help desk chat. Bot-resolved tickets are closed automatically; tickets needing a human appear as "Awaiting staff".</p></div>
+    <div class="stats" id="stats"></div>
+    <div class="toolbar">
+      <input id="search" placeholder="Search subject, message, ticket #..." />
+      <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="awaiting_staff">Awaiting staff</option>
+        <option value="answered">Answered</option>
+        <option value="open">Open</option>
+        <option value="closed">Closed</option>
+      </select>
+      <span class="count-note" id="count"></span>
+    </div>
+    <div id="list"></div>
+  </main>
+  <script>
+    const BASE=(function(){const p=location.pathname;const r=['/helpdesk','/helpdesk.html'];for(const x of r){if(p===x||p.endsWith(x))return p.slice(0,p.length-x.length);}return p.endsWith('/')?p.slice(0,-1):p;})();
+    const u=p=>BASE+p; const g=p=>u(p)+(p.includes('?')?'&':'?')+'_='+Date.now();
+    document.getElementById('reviewLink').href=u('/review');
+    document.getElementById('auditLink').href=u('/audit');
+    function token(){return sessionStorage.getItem('staff_token');}
+    function authHeaders(extra){var h=extra||{};var t=token();if(t)h['Authorization']='Bearer '+t;return h;}
+    function gotoLogin(){location.href=u('/login?next=/helpdesk');}
+    const $=id=>document.getElementById(id);
+    function esc(v){const d=document.createElement('div');d.textContent=v==null?'':String(v);return d.innerHTML;}
+    function fmt(iso){if(!iso)return '';const d=new Date(iso);return isNaN(d)?iso:d.toLocaleString();}
+    function tLabel(s){return {awaiting_staff:'Awaiting staff',answered:'Answered',open:'Open',closed:'Closed'}[s]||s;}
+    let all=[]; const expanded=new Set();
+
+    async function me(){
+      try{const r=await fetch(g('/api/me'),{headers:authHeaders()});const d=await r.json();
+        if(!d.authenticated){gotoLogin();return false;}
+        var right=document.querySelector('.topbar .right');
+        var b=document.createElement('span');b.style.cssText='font-size:.8rem;color:#475569;font-weight:600;';
+        b.textContent=d.name+' ('+d.role+')';
+        var out=document.createElement('button');out.className='btn';out.textContent='Logout';
+        out.onclick=async function(){try{await fetch(u('/api/logout'),{method:'POST',headers:authHeaders()});}catch(e){} sessionStorage.clear(); gotoLogin();};
+        right.appendChild(b);right.appendChild(out);
+        return true;
+      }catch(e){gotoLogin();return false;}
+    }
+
+    function renderStats(){
+      const c={awaiting_staff:0,answered:0,open:0,closed:0};
+      all.forEach(t=>{if(c[t.status]!=null)c[t.status]++;});
+      $('stats').innerHTML=
+        stat(all.length,'Total')+stat(c.awaiting_staff,'Awaiting staff')+stat(c.answered,'Answered')+stat(c.closed,'Closed');
+    }
+    function stat(n,l){return '<div class="stat"><div class="num">'+esc(n)+'</div><div class="lbl">'+esc(l)+'</div></div>';}
+
+    async function load(){
+      try{
+        const r=await fetch(g('/api/helpdesk/tickets'),{headers:authHeaders()});
+        if(r.status===401||r.status===403){gotoLogin();return;}
+        const d=await r.json(); all=d.tickets||[]; renderStats(); render();
+      }catch(e){$('list').innerHTML='<p class="empty err">Could not load tickets: '+esc(e.message)+'</p>';}
+    }
+
+    function render(){
+      const q=$('search').value.trim().toLowerCase(); const st=$('statusFilter').value;
+      let rows=all.filter(t=>{
+        const hay=[t.subject,t.lastText,t.ticketId,t.submissionRef].join(' ').toLowerCase();
+        return (!q||hay.includes(q))&&(!st||t.status===st);
+      });
+      $('count').textContent=rows.length+' of '+all.length+' ticket'+(all.length===1?'':'s');
+      if(!rows.length){$('list').innerHTML='<p class="empty">No tickets match your filters.</p>';return;}
+      $('list').innerHTML=rows.map(t=>{
+        const open=expanded.has(t.ticketId);
+        return '<div class="ticket" data-tid="'+t.ticketId+'">'+
+          '<div class="trow"><span class="tsub">#'+t.ticketId+' · '+esc(t.subject||'Question')+
+            (t.submissionRef?' <span class="muted">(ref '+esc(t.submissionRef)+')</span>':'')+'</span>'+
+            '<span class="tstatus ts-'+t.status+'">'+esc(tLabel(t.status))+'</span></div>'+
+          '<div class="trow" style="margin-top:4px;"><span class="last">'+esc((t.lastText||'').slice(0,80))+'</span>'+
+            '<span class="view" data-tid="'+t.ticketId+'">'+(open?'Hide':'View / reply')+'</span></div>'+
+          '<div class="thread'+(open?' open':'')+'" id="th-'+t.ticketId+'"></div>'+
+        '</div>';
+      }).join('');
+      document.querySelectorAll('.view').forEach(v=>v.addEventListener('click',()=>{
+        const tid=Number(v.dataset.tid);
+        if(expanded.has(tid))expanded.delete(tid);else expanded.add(tid);
+        render();
+      }));
+      expanded.forEach(tid=>loadThread(tid));
+    }
+
+    async function loadThread(tid){
+      const el=$('th-'+tid); if(!el)return;
+      try{
+        const r=await fetch(g('/api/chat/messages?ticket='+tid),{headers:authHeaders()});
+        if(r.status===401||r.status===403){gotoLogin();return;}
+        const d=await r.json();
+        const msgs=(d.messages||[]).map(m=>{
+          const who=m.sender==='user'?'User':(m.sender==='staff'?'Staff':'Bot');
+          return '<div class="m m-'+m.sender+'"><div class="who">'+who+' · '+esc(fmt(m.createdAt))+'</div>'+esc(m.text)+'</div>';
+        }).join('');
+        el.innerHTML=msgs+'<div class="reply"><input id="rin-'+tid+'" placeholder="Reply to the applicant..." /><button data-tid="'+tid+'">Send</button></div>';
+        const inp=el.querySelector('#rin-'+tid), btn=el.querySelector('.reply button');
+        function send(){const text=inp.value.trim();if(!text)return;inp.value='';
+          fetch(u('/api/helpdesk/reply'),{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({ticketId:tid,text})})
+            .then(()=>{loadThread(tid);load();});}
+        btn.addEventListener('click',send);
+        inp.addEventListener('keydown',e=>{if(e.key==='Enter')send();});
+      }catch(e){}
+    }
+
+    $('search').addEventListener('input',render);
+    $('statusFilter').addEventListener('change',render);
+    $('refresh').addEventListener('click',load);
+
+    (async function(){ if(await me()){ load(); setInterval(load,8000); } })();
+  </script>
+</body>
+</html>

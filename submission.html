@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study Document Submission</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .container { width: 100%; max-width: 640px; }
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 28px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+    h1 { margin: 0 0 4px; font-size: 1.4rem; }
+    p.subtitle { margin: 0 0 24px; color: #94a3b8; font-size: 0.9rem; }
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #93c5fd;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 8px;
+      margin: 0 0 18px;
+    }
+    .field { margin-bottom: 18px; }
+    label.field-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+    label.field-label .req { color: #f87171; }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    }
+    .choices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .choice {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .choice input { margin-top: 2px; }
+    .sub-field {
+      margin-left: 16px;
+      padding-left: 14px;
+      border-left: 2px solid #334155;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: #3b82f6;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 6px;
+    }
+    button:hover { background: #2563eb; }
+    .error { color: #f87171; font-size: 0.78rem; margin-top: 4px; min-height: 1em; }
+    .success {
+      background: #064e3b;
+      border: 1px solid #10b981;
+      color: #a7f3d0;
+      padding: 14px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+    .submissions { margin-top: 28px; }
+    .submissions h2 {
+      font-size: 1rem;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .submission-item {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      font-size: 0.83rem;
+    }
+    .submission-item .row { margin-bottom: 4px; }
+    .submission-item .row strong { color: #93c5fd; }
+    .submission-item .meta { color: #64748b; font-size: 0.75rem; margin-top: 8px; }
+    .empty { color: #64748b; font-size: 0.85rem; font-style: italic; }
+    .clear-btn {
+      background: transparent;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      width: auto;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      float: right;
+      margin-top: -4px;
+    }
+    .clear-btn:hover { background: #334155; }
+    .doc-field {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      background: #0f172a;
+    }
+    .doc-field .doc-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 8px;
+    }
+    .doc-field .doc-name .req { color: #f87171; }
+    input[type="file"] {
+      width: 100%;
+      font-size: 0.82rem;
+      color: #94a3b8;
+    }
+    input[type="file"]::file-selector-button {
+      background: #334155;
+      color: #e2e8f0;
+      border: none;
+      padding: 7px 12px;
+      border-radius: 6px;
+      margin-right: 10px;
+      cursor: pointer;
+      font-size: 0.82rem;
+    }
+    input[type="file"]::file-selector-button:hover { background: #475569; }
+    .note-hint { font-size: 0.75rem; color: #64748b; margin-top: 6px; }
+    .conditional {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #334155;
+    }
+    .conditional label { font-size: 0.8rem; color: #94a3b8; display: block; margin-bottom: 6px; }
+    .conditional input[type="text"] { background: #1e293b; }
+    .section-note {
+      font-size: 0.78rem;
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 480px) {
+      .choices { grid-template-columns: 1fr; }
+    }
+    .clear-file { background:transparent; border:1px solid #475569; color:#94a3b8; border-radius:6px; padding:3px 9px; font-size:0.72rem; font-weight:500; cursor:pointer; margin-top:6px; }
+    .clear-file:hover { background:#334155; color:#e2e8f0; }
+  </style>
+  <style id="enterprise-theme">
+/* ============================================================================
+   Enterprise SaaS theme — LIGHT MODE
+   Clinical Research Administration Platform. Visual layer loaded LAST so it
+   refines look WITHOUT changing markup/content/JS. Overrides the pages'
+   hardcoded dark colors to a clean, professional white/slate palette.
+   ============================================================================ */
+
+:root {
+  --app-bg:        #f1f5f9;   /* page background (soft gray) */
+  --surface-1:     #ffffff;   /* cards / panels */
+  --surface-2:     #f8fafc;   /* inputs / insets */
+  --surface-3:     #eef2f7;   /* hover / elevated rows */
+  --border:        #e2e8f0;
+  --border-soft:   #eef2f7;
+  --text:          #0f172a;
+  --text-muted:    #475569;
+  --text-dim:      #94a3b8;
+  --brand:         #2563eb;
+  --brand-strong:  #1d4ed8;
+  --brand-tint:    rgba(37,99,235,.12);
+  --ok:#15803d; --ok-bg:#e9f8ef; --ok-bd:#86efac;
+  --warn:#b45309; --warn-bg:#fef5e7; --warn-bd:#fcd9a5;
+  --danger:#b91c1c; --danger-bg:#fdecec; --danger-bd:#f6b7b7;
+  --info:#1d4ed8; --info-bg:#e8f0ff; --info-bd:#bcd3ff;
+  --radius:12px; --radius-sm:9px;
+  --shadow:0 1px 2px rgba(16,24,40,.06), 0 8px 24px -14px rgba(16,24,40,.25);
+  --font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans Thai",sans-serif;
+}
+
+/* ---- base ---- */
+body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(37,99,235,.05), transparent 60%),
+    var(--app-bg) !important;
+  color: var(--text) !important;
+  font-family: var(--font) !important;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: .1px;
+  border-top: 4px solid var(--brand) !important;
+}
+a { color: var(--brand) !important; }
+
+/* ---- full-width layout (use the whole screen) ---- */
+.container { width: 100% !important; max-width: 1100px !important; margin: 0 auto !important; }
+.wrap { max-width: 1320px !important; margin: 0 auto !important; }
+/* give centered single-card pages (submission/result) breathing room + top gap */
+body { padding-left: 24px; padding-right: 24px; }
+
+/* ---- generic dark-surface overrides (catch hardcoded colors) ---- */
+.card, .table-wrap, .stat, .ai-panel, .login-card,
+.container .card, .doc-field, .track-box, .hd-tickets, .ai-rec,
+.comment-box, .resub-note, .conditional, .choice, .section-note {
+  background: var(--surface-1) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+.card, .table-wrap, .stat, .ai-panel, .login-card {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+/* text colors */
+h1, h2, h3, .title, .doc-name, .track-name, .tl-label, .hd-tsub { color: var(--text) !important; }
+.subtitle, p.subtitle, .muted, .count-note, .section-label, .lbl,
+.ai-h, .meta, .card .sub, .note-hint, .hint, .ai-detail, .track-meta,
+.tl-date, .hd-th .muted { color: var(--text-muted) !important; }
+.field-label, label, .rf-label { color: #334155 !important; }
+
+/* ---- headings / section titles ---- */
+h1 { letter-spacing: -.2px; font-weight: 700; }
+.section-title {
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--border) !important;
+  font-weight: 700 !important;
+}
+.section-title::before {
+  content: ""; display: inline-block; width: 3px; height: 1em;
+  background: var(--brand); border-radius: 2px; margin-right: 9px; vertical-align: -2px;
+}
+
+/* ---- top bar ---- */
+.topbar {
+  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: var(--shadow);
+}
+.topbar h1 { font-size: 1.05rem; color: var(--text) !important; }
+
+/* ---- inputs ---- */
+input[type="text"], input[type="email"], input[type="password"],
+textarea, select, .lookup input, .toolbar input, .toolbar select,
+.review-box select, .review-box textarea, .hd-reply input, .hd-row input,
+.resubmit textarea, .resubmit input {
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text) !important;
+}
+input::placeholder, textarea::placeholder { color: #94a3b8 !important; }
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px var(--brand-tint) !important;
+}
+
+/* ---- buttons ---- */
+button[type="submit"], .save-btn, .lookup button, .resubmit button, .hd-send, .hd-fab {
+  background: linear-gradient(180deg, var(--brand), var(--brand-strong)) !important;
+  border: none !important; color: #fff !important;
+  border-radius: var(--radius-sm) !important; font-weight: 600 !important;
+  box-shadow: var(--shadow);
+}
+button[type="submit"]:hover, .save-btn:hover, .lookup button:hover,
+.resubmit button:hover, .hd-send:hover, .hd-fab:hover { filter: brightness(1.06); }
+.btn-ghost, .clear-btn, .clear-file, .hd-esc, .hd-view {
+  background: #fff !important; border: 1px solid var(--border) !important; color: var(--text-muted) !important;
+}
+.btn-ghost:hover, .clear-btn:hover, .clear-file:hover, .hd-esc:hover { background: var(--surface-3) !important; color: var(--text) !important; }
+.del-btn { background: #fdecec !important; color: #b91c1c !important; border: 1px solid #f6b7b7 !important; }
+.del-btn:hover { background: #fbd9d9 !important; }
+
+/* ---- status badges ---- */
+.status-pill, .ai-badge, .hd-tstatus, .badge, .pill {
+  border-radius: 999px !important; font-weight: 700 !important;
+}
+.st-Approved  { background: var(--ok-bg)!important;    color: var(--ok)!important;    border:1px solid var(--ok-bd)!important; }
+.st-Rejected  { background: var(--danger-bg)!important; color: var(--danger)!important; border:1px solid var(--danger-bd)!important; }
+.st-Pending   { background: var(--warn-bg)!important;  color: var(--warn)!important;  border:1px solid var(--warn-bd)!important; }
+.st-Needs-revision { background: var(--warn-bg)!important; color:#c2410c!important;   border:1px solid var(--warn-bd)!important; }
+.st-In-review { background: var(--info-bg)!important;  color: var(--info)!important;  border:1px solid var(--info-bd)!important; }
+.badge { background: var(--surface-2)!important; border:1px solid var(--border)!important; color: var(--text-muted)!important; }
+
+/* ---- stat tiles ---- */
+.stats { gap: 16px; }
+.stat { padding: 18px !important; position: relative; overflow: hidden; }
+.stat::after { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background: var(--brand); }
+.stat .num { color: var(--brand) !important; font-weight: 800 !important; letter-spacing: -.5px; }
+.stat .lbl { color: var(--text-muted) !important; text-transform: uppercase; letter-spacing: .5px; font-size: .7rem !important; }
+
+/* ---- data table ---- */
+table thead th { background: var(--surface-2) !important; color: var(--text-muted) !important; border-bottom: 1px solid var(--border) !important; }
+tbody td { border-bottom: 1px solid var(--border-soft) !important; color: var(--text) !important; }
+tbody tr.main-row:hover { background: var(--surface-3) !important; }
+tbody tr.expanded-row > td { background: #f8fafc !important; }
+.id-cell { color: var(--text-dim) !important; }
+.title-cell .th { color: var(--text-muted) !important; }
+
+/* ---- detail / review ---- */
+.detail { padding: 18px 20px !important; }
+.track-box { background: var(--surface-2) !important; border: 1px solid var(--border) !important; }
+.review-box { border-top: 1px solid var(--border) !important; }
+.row strong { color: #1d4ed8 !important; }
+
+/* ---- AI panel ---- */
+.ai-panel { background: var(--surface-2) !important; }
+.ai-rec { background: #fff !important; }
+.ai-yes { color: var(--ok) !important; } .ai-no { color: var(--danger) !important; }
+.ai-src { color: var(--brand) !important; background: var(--info-bg) !important; border: 1px solid var(--info-bd) !important; }
+.ai-sum, .ai-analyzed { color: var(--text-muted) !important; }
+
+/* ---- timeline ---- */
+.tl-step .dot { background: #fff !important; border-color: var(--border) !important; color: var(--text-dim) !important; }
+.tl-step.done .dot, .tl-step.current .dot { background: var(--brand) !important; border-color: var(--brand) !important; color: #fff !important; box-shadow: 0 0 0 4px var(--brand-tint); }
+.tl-step:not(:first-child)::before { background: var(--border) !important; }
+.tl-step.done:not(:first-child)::before, .tl-step.current:not(:first-child)::before { background: var(--brand) !important; }
+.tl-label { color: var(--text) !important; }
+
+/* ---- help desk chat widget (light) ---- */
+.hd-panel { background: #fff !important; border: 1px solid var(--border) !important; box-shadow: 0 10px 40px rgba(16,24,40,.18) !important; }
+.hd-head { background: var(--surface-2) !important; border-bottom: 1px solid var(--border) !important; }
+.hd-head .t { color: var(--text) !important; }
+.hd-body { background: #fff !important; }
+.hd-foot { background: var(--surface-2) !important; border-top: 1px solid var(--border) !important; }
+.hd-bot { background: var(--surface-2) !important; color: var(--text) !important; border: 1px solid var(--border) !important; }
+.hd-user { background: var(--brand) !important; color: #fff !important; }
+.hd-staff { background: var(--ok-bg) !important; color: #166534 !important; border: 1px solid var(--ok-bd) !important; }
+
+/* ---- messages ---- */
+.success { background: var(--ok-bg) !important; border: 1px solid var(--ok-bd) !important; color: #166534 !important; }
+.error, .rf-err { color: #dc2626 !important; }
+
+/* scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Study Document Submission</h1>
+      <p class="subtitle">Complete the fields below and submit.</p>
+
+      <div id="successMsg" class="success" style="display:none;"></div>
+
+      <form id="submissionForm" novalidate>
+        <h2 class="section-title">Applicant / Contact</h2>
+
+        <div class="field">
+          <label class="field-label" for="contactNameTH">Name (TH) <span class="req">*</span></label>
+          <input type="text" id="contactNameTH" name="contactNameTH" placeholder="ชื่อ-นามสกุล (ภาษาไทย)" />
+          <div class="error" id="contactNameTHError"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="contactNameEN">Name (EN)</label>
+          <input type="text" id="contactNameEN" name="contactNameEN" placeholder="Full name (English)" />
+          <div class="error" id="contactNameENError"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="email">Email <span class="req">*</span></label>
+          <input type="text" id="email" name="email" placeholder="you@example.com" />
+          <div class="error" id="emailError"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="phone">Phone number</label>
+          <input type="text" id="phone" name="phone" placeholder="e.g. 0812345678" />
+          <div class="error" id="phoneError"></div>
+        </div>
+
+        <h2 class="section-title" style="margin-top:28px;">Section 1 — Study Information</h2>
+
+        <div class="field">
+          <label class="field-label" for="titleTH">1. Study title (TH) <span class="req">*</span></label>
+          <input type="text" id="titleTH" name="titleTH" placeholder="ชื่อโครงการ (ภาษาไทย)" />
+          <div class="error" id="titleTHError"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="titleEN">2. Study title (EN) <span class="req">*</span></label>
+          <input type="text" id="titleEN" name="titleEN" placeholder="Study title (English)" />
+          <div class="error" id="titleENError"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="protocolNo">3. Protocol No. <span class="req">*</span></label>
+          <input type="text" id="protocolNo" name="protocolNo" placeholder="Protocol number" />
+          <div class="error" id="protocolNoError"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="sirbNo">4. SIRB/EC No.</label>
+          <input type="text" id="sirbNo" name="sirbNo" placeholder="SIRB / EC number" />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="sponsorName">5. Sponsor name <span class="req">*</span></label>
+          <input type="text" id="sponsorName" name="sponsorName" placeholder="Sponsor name" />
+          <div class="error" id="sponsorNameError"></div>
+        </div>
+
+        <div class="field sub-field">
+          <label class="field-label">5.1 Sponsor type <span class="req">*</span></label>
+          <div class="choices">
+            <label class="choice">
+              <input type="radio" name="sponsorType" value="Domestic Government Organization" />
+              <span>1. Domestic Government Organization</span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="sponsorType" value="Foreign Government Organization" />
+              <span>2. Foreign Government Organization</span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="sponsorType" value="Domestic Private Organization" />
+              <span>3. Domestic Private Organization</span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="sponsorType" value="Foreign Private Organization" />
+              <span>4. Foreign Private Organization</span>
+            </label>
+          </div>
+          <div class="error" id="sponsorTypeError"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="croName">6. CRO Name</label>
+          <input type="text" id="croName" name="croName" placeholder="CRO name" />
+        </div>
+
+        <h2 class="section-title" style="margin-top:28px;">Section 2 — Document requirement (Attached file)</h2>
+        <div class="section-note">Accepted file types: PDF or Word (.pdf, .doc, .docx).</div>
+
+        <div class="doc-field">
+          <div class="doc-name">1. Cover letter <span class="req">*</span></div>
+          <input type="file" id="docCover" name="docCover" accept=".pdf,.doc,.docx" />
+          <button type="button" class="clear-file" data-target="docCover">✕ clear</button>
+          <div class="error" id="docCoverError"></div>
+        </div>
+
+        <div class="doc-field">
+          <div class="doc-name">2. Clinical trial agreement (Draft version) <span class="req">*</span></div>
+          <input type="file" id="docCTA" name="docCTA" accept=".pdf,.doc,.docx" />
+          <button type="button" class="clear-file" data-target="docCTA">✕ clear</button>
+          <div class="error" id="docCTAError"></div>
+        </div>
+
+        <div class="doc-field">
+          <div class="doc-name">3. Protocol <span class="req">*</span></div>
+          <input type="file" id="docProtocol" name="docProtocol" accept=".pdf,.doc,.docx" />
+          <button type="button" class="clear-file" data-target="docProtocol">✕ clear</button>
+          <div class="error" id="docProtocolError"></div>
+        </div>
+
+        <div class="doc-field">
+          <div class="doc-name">4. SIRB/EC Certificate of approval</div>
+          <input type="file" id="docSIRB" name="docSIRB" accept=".pdf,.doc,.docx" />
+          <button type="button" class="clear-file" data-target="docSIRB">✕ clear</button>
+          <div class="note-hint">If in a submission process, please attach a letter confirming submission to SIRB/EC below.</div>
+          <div class="conditional">
+            <label for="sirbSubmittedLetter">Letter — submitted to SIRB/EC (if certificate not yet issued)</label>
+            <input type="file" id="sirbSubmittedLetter" name="sirbSubmittedLetter" accept=".pdf,.doc,.docx" />
+          <button type="button" class="clear-file" data-target="sirbSubmittedLetter">✕ clear</button>
+          </div>
+        </div>
+
+        <button type="submit">Submit</button>
+      </form>
+
+      <p style="margin-top:22px;text-align:center;font-size:0.8rem;color:#64748b;">
+        <a class="navlink" data-path="/result" href="/result" style="color:#60a5fa;">Check submission result</a>
+        &nbsp;·&nbsp;
+        <a class="navlink" data-path="/review" href="/review" style="color:#60a5fa;">Staff review panel</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // Detect base prefix (e.g. "" when served at "/", "/app" behind a proxy).
+    const BASE = (function () {
+      var p = window.location.pathname;
+      var routes = ["/index.html", "/submission.html", "/admin", "/admin.html",
+                    "/review", "/review.html", "/result-preview", "/result-preview.html",
+                    "/result", "/result.html"];
+      for (var i = 0; i < routes.length; i++) {
+        if (p === routes[i] || p.endsWith(routes[i])) return p.slice(0, p.length - routes[i].length);
+      }
+      if (p.endsWith("/")) return p.slice(0, -1);
+      return p;
+    })();
+    function u(path) { return BASE + path; }
+    // GET helper that defeats CDN/proxy caching by appending a timestamp.
+    function g(path) { return u(path) + (path.indexOf("?") === -1 ? "?" : "&") + "_=" + Date.now(); }
+
+    const form = document.getElementById("submissionForm");
+    const successMsg = document.getElementById("successMsg");
+
+    const TEXT_FIELDS = [
+      { key: "titleTH", label: "Study title (TH)" },
+      { key: "titleEN", label: "Study title (EN)" },
+      { key: "protocolNo", label: "Protocol No." },
+      { key: "sirbNo", label: "SIRB/EC No." },
+      { key: "sponsorName", label: "Sponsor name" },
+      { key: "croName", label: "CRO Name" },
+    ];
+
+    const FILE_FIELDS = [
+      { key: "docCover", label: "Cover letter", required: true },
+      { key: "docCTA", label: "Clinical trial agreement (Draft)", required: true },
+      { key: "docProtocol", label: "Protocol", required: true },
+      { key: "docSIRB", label: "SIRB/EC Certificate of approval", required: false },
+      { key: "sirbSubmittedLetter", label: "Letter — submitted to SIRB/EC", required: false },
+    ];
+
+    const ALLOWED_EXT = ["pdf", "doc", "docx"];
+
+    function fileExt(name) {
+      const parts = name.split(".");
+      return parts.length > 1 ? parts.pop().toLowerCase() : "";
+    }
+
+    function formatSize(bytes) {
+      if (bytes == null) return "";
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+      return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str == null ? "" : str;
+      return div.innerHTML;
+    }
+
+    function clearErrors() {
+      ["contactNameTH", "contactNameEN", "email", "phone",
+       "titleTH", "titleEN", "protocolNo", "sponsorName", "sponsorType",
+       "docCover", "docCTA", "docProtocol"].forEach(function (f) {
+        const el = document.getElementById(f + "Error");
+        if (el) el.textContent = "";
+      });
+    }
+
+    function clientValidate() {
+      clearErrors();
+      let valid = true;
+
+      [["contactNameTH", "Name (TH)"],
+       ["email", "Email"],
+       ["titleTH", "Study title (TH)"],
+       ["titleEN", "Study title (EN)"],
+       ["protocolNo", "Protocol No."],
+       ["sponsorName", "Sponsor name"]].forEach(function (pair) {
+        if (!form[pair[0]].value.trim()) {
+          document.getElementById(pair[0] + "Error").textContent = pair[1] + " is required.";
+          valid = false;
+        }
+      });
+
+      // Email format
+      const emailVal = form.email.value.trim();
+      if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+        document.getElementById("emailError").textContent = "Enter a valid email address.";
+        valid = false;
+      }
+
+      // Sponsor type (single-select, required)
+      if (!form.querySelector('input[name="sponsorType"]:checked')) {
+        document.getElementById("sponsorTypeError").textContent = "Please select a sponsor type.";
+        valid = false;
+      }
+
+      FILE_FIELDS.forEach(function (f) {
+        const input = document.getElementById(f.key);
+        const file = input.files && input.files[0];
+        const errEl = document.getElementById(f.key + "Error");
+        if (!file) {
+          if (f.required && errEl) {
+            errEl.textContent = f.label + " is required.";
+            valid = false;
+          }
+          return;
+        }
+        if (ALLOWED_EXT.indexOf(fileExt(file.name)) === -1 && errEl) {
+          errEl.textContent = "Only PDF or Word files are allowed.";
+          valid = false;
+        }
+      });
+      return valid;
+    }
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      if (!clientValidate()) return;
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Submitting...";
+
+      try {
+        const fd = new FormData(form);
+        const res = await fetch(u("/api/submit"), { method: "POST", body: fd });
+        const data = await res.json().catch(function () { return {}; });
+
+        if (res.status === 201 && data.ok) {
+          form.reset();
+          successMsg.innerHTML =
+            "Submission received. Your reference ID is <strong>#" + data.id + "</strong>.<br>" +
+            "Keep this ID to check your result at " +
+            '<a href="' + u("/result?id=" + data.id) + '" style="color:#a7f3d0;text-decoration:underline;">the result page</a>.';
+          successMsg.style.display = "block";
+          successMsg.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else if (res.status === 422 && data.fields) {
+          // Show server-side field errors
+          Object.keys(data.fields).forEach(function (key) {
+            const el = document.getElementById(key + "Error");
+            if (el) el.textContent = data.fields[key];
+          });
+        } else {
+          alert("Submission failed: " + (data.error || ("HTTP " + res.status)));
+        }
+      } catch (err) {
+        alert("Network error: " + err.message + "\nIs the server running?");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit";
+      }
+    });
+
+    // Clear a file input when its ✕ button is pressed
+    document.querySelectorAll('.clear-file').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var inp = document.getElementById(btn.dataset.target);
+        if (inp) { inp.value = ''; }
+        var err = document.getElementById(btn.dataset.target + 'Error');
+        if (err) err.textContent = '';
+      });
+    });
+
+    // Make nav links base-aware
+    document.querySelectorAll("a.navlink").forEach(function (a) {
+      a.setAttribute("href", u(a.dataset.path));
+    });
+  </script>
+  <script>
+  (function(){
+    var p=window.location.pathname;
+    var routes=["/index.html","/submission.html","/admin","/admin.html","/review","/review.html","/result-preview","/result-preview.html","/result","/result.html"];
+    var base=p;
+    for(var i=0;i<routes.length;i++){ if(p===routes[i]||p.endsWith(routes[i])){ base=p.slice(0,p.length-routes[i].length); break; } }
+    if(base===p){ base = p.endsWith("/")?p.slice(0,-1):p; }
+    var s=document.createElement("script"); s.src=base+"/chat-widget.js"; s.defer=true; document.body.appendChild(s);
+  })();
+  </script>
+</body>
+</html>

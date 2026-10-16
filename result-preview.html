@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preview — Check Submission Result (all cases)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a; color: #e2e8f0; padding: 32px 20px;
+    }
+    a { color: #60a5fa; }
+    .page-head { max-width: 1100px; margin: 0 auto 24px; }
+    .page-head h1 { font-size: 1.5rem; margin: 0 0 6px; }
+    .page-head p { color: #94a3b8; font-size: 0.9rem; margin: 0; }
+    .note {
+      max-width: 1100px; margin: 0 auto 24px; font-size: 0.82rem; color: #fbbf24;
+      background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.3);
+      border-radius: 8px; padding: 10px 14px;
+    }
+    .grid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+
+    /* --- card mirrors result.html look --- */
+    .card { background: #1e293b; border-radius: 12px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    .mock-input { display:flex; gap:8px; margin-bottom:18px; }
+    .mock-input .box { flex:1; padding:9px 12px; border:1px solid #334155; border-radius:8px; background:#0f172a; color:#e2e8f0; font-size:0.9rem; }
+    .mock-input .btn { background:#3b82f6; color:#fff; border-radius:8px; padding:9px 16px; font-size:0.85rem; font-weight:600; }
+    .ref { font-size:0.78rem; color:#64748b; }
+    h2.title { font-size:1.02rem; margin:4px 0 14px; }
+    .status-pill { display:inline-block; padding:6px 14px; border-radius:999px; font-size:0.9rem; font-weight:700; }
+    .status-pill.small { padding:2px 10px; font-size:0.74rem; }
+    .st-Pending { background:#422006; color:#fbbf24; border:1px solid #a16207; }
+    .st-Approved { background:#052e1a; color:#4ade80; border:1px solid #15803d; }
+    .st-Rejected { background:#450a0a; color:#f87171; border:1px solid #b91c1c; }
+    .st-Needs-revision { background:#422006; color:#fdba74; border:1px solid #c2410c; }
+    .st-In-review { background:#172554; color:#93c5fd; border:1px solid #1d4ed8; }
+    .field { margin-top:15px; }
+    .field .lbl { font-size:0.76rem; color:#94a3b8; margin-bottom:4px; }
+    .field .val { font-size:0.9rem; }
+    .track-item { padding:9px 0; border-bottom:1px solid #273449; }
+    .track-item:last-child { border-bottom:none; }
+    .track-item .track-name { display:inline-block; min-width:140px; font-weight:600; font-size:0.88rem; }
+    .track-item .track-when { font-size:0.7rem; color:#64748b; margin-left:8px; }
+    .comment-box { background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px 12px; font-size:0.86rem; white-space:pre-wrap; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>Check Submission Result — Preview</h1>
+    <p>ตัวอย่างผลลัพธ์ที่ User จะเห็นเมื่อกรอกหมายเลขอ้างอิง (ID) เพื่อตรวจสอบสถานะ แสดงครบทุกสถานะ</p>
+  </div>
+  <div class="note">
+    นี่คือหน้า <strong>preview แบบ static</strong> (ฝังข้อมูลตัวอย่างไว้) สำหรับดูหน้าตา — หน้าใช้งานจริงคือ
+    <a href="/result">/result</a> ซึ่งดึงข้อมูลสดจากฐานข้อมูลตาม ID ที่กรอก
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <script>
+    // Snapshot of real data returned by /api/submission for each sample ID.
+    const SAMPLES = [
+      { id: 2, titleEN: "Efficacy of Antiviral Drug X in Influenza A Patients", protocolNo: "ACM-2026-001",
+        status: "Approved", createdAt: "2026-10-08T16:02:02Z",
+        reviews: [
+          { track: "Legal", status: "Approved", comment: "ร่างสัญญาเป็นไปตามมาตรฐาน อนุมัติ", reviewedAt: "2026-10-08T16:35:46Z" },
+          { track: "Business Development", status: "Approved", comment: "สอดคล้องกับกลยุทธ์องค์กร", reviewedAt: "2026-10-08T16:35:46Z" },
+        ] },
+      { id: 3, titleEN: "Phase II Trial of Novel Vaccine Candidate in Healthy Volunteers", protocolNo: "GBT-VAX-2026-II",
+        status: "Needs revision", createdAt: "2026-10-08T16:02:02Z",
+        reviews: [
+          { track: "Legal", status: "Approved", comment: "เงื่อนไขสัญญาผ่าน", reviewedAt: "2026-10-08T16:35:46Z" },
+          { track: "Business Development", status: "Needs revision", comment: "ขอรายละเอียดงบประมาณและแผนธุรกิจเพิ่มเติม", reviewedAt: "2026-10-08T16:35:46Z" },
+        ] },
+      { id: 4, titleEN: "Observational Study of Diabetes Treatment Outcomes in Community", protocolNo: "UNIV-DM-2026-07",
+        status: "In review", createdAt: "2026-10-08T16:02:02Z",
+        reviews: [
+          { track: "Legal", status: "Approved", comment: "ผ่านด้านกฎหมาย", reviewedAt: "2026-10-08T16:35:46Z" },
+          { track: "Business Development", status: "Pending", comment: "", reviewedAt: null },
+        ] },
+      { id: 5, titleEN: "Study of a Novel Drug for Early-Stage Alzheimer's Disease", protocolNo: "NC-ALZ-2026-03",
+        status: "Rejected", createdAt: "2026-10-08T16:02:02Z",
+        reviews: [
+          { track: "Legal", status: "Rejected", comment: "ขาดเอกสารใบรับรอง EC และข้อสัญญาไม่ครบถ้วน", reviewedAt: "2026-10-08T16:35:46Z" },
+          { track: "Business Development", status: "Approved", comment: "ด้านธุรกิจไม่มีปัญหา", reviewedAt: "2026-10-08T16:35:46Z" },
+        ] },
+      { id: 6, titleEN: "Clinical Trial of a Next-Generation Cardiac Pacemaker", protocolNo: "HW-CARD-2026-11",
+        status: "Pending", createdAt: "2026-10-08T16:02:02Z",
+        reviews: [
+          { track: "Legal", status: "Pending", comment: "", reviewedAt: null },
+          { track: "Business Development", status: "Pending", comment: "", reviewedAt: null },
+        ] },
+    ];
+
+    function escapeHtml(str) { const d = document.createElement("div"); d.textContent = str == null ? "" : str; return d.innerHTML; }
+    function statusClass(s) { return "st-" + String(s || "Pending").replace(/\s+/g, "-"); }
+    function fmtDate(iso) { if (!iso) return "—"; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString(); }
+    function statusMessage(status) {
+      switch (status) {
+        case "Approved": return "Your submission has been approved.";
+        case "Rejected": return "Your submission was not approved. See the comments below.";
+        case "Needs revision": return "Revisions are requested. See the comments below.";
+        case "In review": return "Under review by the departments.";
+        default: return "Your submission is pending review.";
+      }
+    }
+
+    function cardHtml(d) {
+      const tracks = d.reviews.map(function (r) {
+        const comment = r.comment ? '<div class="comment-box">' + escapeHtml(r.comment) + "</div>" : "";
+        const when = r.reviewedAt ? '<span class="track-when">reviewed ' + escapeHtml(fmtDate(r.reviewedAt)) + "</span>" : "";
+        return '<div class="track-item"><span class="track-name">' + escapeHtml(r.track) + "</span>" +
+               '<span class="status-pill small ' + statusClass(r.status) + '">' + escapeHtml(r.status) + "</span>" +
+               when + comment + "</div>";
+      }).join("");
+
+      return (
+        '<div class="card">' +
+          '<div class="mock-input"><span class="box">ID: ' + d.id + '</span><span class="btn">Check</span></div>' +
+          '<div class="ref">Reference ID #' + d.id + "</div>" +
+          '<h2 class="title">' + escapeHtml(d.titleEN) + "</h2>" +
+          '<span class="status-pill ' + statusClass(d.status) + '">' + escapeHtml(d.status) + " — " + escapeHtml(statusMessage(d.status)) + "</span>" +
+          '<div class="field"><div class="lbl">Protocol No.</div><div class="val">' + escapeHtml(d.protocolNo) + "</div></div>" +
+          '<div class="field"><div class="lbl">Department reviews</div>' + tracks + "</div>" +
+          '<div class="field"><div class="lbl">Submitted</div><div class="val">' + escapeHtml(fmtDate(d.createdAt)) + "</div></div>" +
+        "</div>"
+      );
+    }
+
+    document.getElementById("grid").innerHTML = SAMPLES.map(cardHtml).join("");
+  </script>
+</body>
+</html>

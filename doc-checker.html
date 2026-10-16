@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ตรวจเอกสารก่อนส่ง (Document Checker)</title>
+<style>
+  :root {
+    --bg: #1e1e2e;
+    --panel-bg: #313244;
+    --input-bg: #45475a;
+    --text: #cdd6f4;
+    --muted: #a6adc8;
+    --accent: #89b4fa;
+    --ok: #a6e3a1;
+    --error: #f38ba8;
+    --warn: #f9e2af;
+    --border: #585b70;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h1 {
+    margin: 0 0 4px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-align: center;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    margin: 0 0 24px;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  .container {
+    width: min(100%, 820px);
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 760px) {
+    .container { grid-template-columns: 1fr 1fr; }
+    .full { grid-column: 1 / -1; }
+  }
+
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+
+  .panel h2 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    color: var(--accent);
+  }
+
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+
+  textarea, input[type="file"] {
+    width: 100%;
+    background: var(--input-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 14px;
+  }
+
+  textarea { min-height: 180px; resize: vertical; }
+
+  .drop {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 12px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .drop.drag { border-color: var(--accent); background: rgba(137,180,250,0.08); }
+
+  button {
+    background: var(--accent);
+    color: #1e1e2e;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  button:hover { filter: brightness(1.08); }
+  button.secondary { background: var(--border); color: var(--text); }
+
+  .score {
+    font-size: 15px;
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: var(--input-bg);
+  }
+  .score.pass { border-left: 4px solid var(--ok); }
+  .score.fail { border-left: 4px solid var(--error); }
+
+  ul.results { list-style: none; padding: 0; margin: 0; }
+  ul.results li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  ul.results li:last-child { border-bottom: none; }
+  .icon { font-size: 15px; line-height: 1.4; }
+  .ok  { color: var(--ok); }
+  .bad { color: var(--error); }
+  .warn{ color: var(--warn); }
+  .detail { color: var(--muted); font-size: 12px; }
+
+  .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  code { background: var(--input-bg); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <h1>📄 ตรวจเอกสารก่อนส่ง</h1>
+  <p class="subtitle">อัปโหลดไฟล์ <code>.txt</code> หรือวางข้อความ ระบบจะตรวจว่าเอกสารมีรายการที่ต้องการครบและกรอกสมบูรณ์หรือไม่</p>
+
+  <div class="container">
+    <div class="panel">
+      <h2>1) เอกสารของคุณ</h2>
+      <div class="drop" id="drop">ลากไฟล์ .txt มาวางที่นี่ หรือเลือกไฟล์</div>
+      <input type="file" id="file" accept=".txt,text/plain" />
+      <label style="margin-top:12px">หรือวางข้อความเอกสารที่นี่</label>
+      <textarea id="docText" placeholder="เช่น:&#10;ชื่อ: สมชาย ใจดี&#10;วันที่: 2026-10-08&#10;หัวข้อ:&#10;รายละเอียด: ...&#10;ลายเซ็น: สมชาย"></textarea>
+    </div>
+
+    <div class="panel">
+      <h2>2) รายการที่ต้องมี (Checklist)</h2>
+      <label>พิมพ์คำ/หัวข้อที่ต้องมี บรรทัดละ 1 รายการ</label>
+      <textarea id="checklist">ชื่อ
+วันที่
+หัวข้อ
+รายละเอียด
+ลายเซ็น</textarea>
+      <p class="hint">ระบบจะเช็กว่า <b>มีหัวข้อนี้</b> และ <b>กรอกข้อมูลหลังหัวข้อแล้ว</b> (ไม่เว้นว่าง)</p>
+      <button id="checkBtn">ตรวจเอกสาร ✓</button>
+      <button id="sampleBtn" class="secondary">ใส่ตัวอย่าง</button>
+    </div>
+
+    <div class="panel full" id="resultPanel" style="display:none">
+      <h2>ผลการตรวจสอบ</h2>
+      <div class="score" id="score"></div>
+      <ul class="results" id="results"></ul>
+    </div>
+  </div>
+
+<script>
+  "use strict";
+
+  const el = (id) => document.getElementById(id);
+  const docText   = el("docText");
+  const checklist = el("checklist");
+  const drop      = el("drop");
+  const fileInput = el("file");
+
+  // ---- โหลดไฟล์ .txt เข้า textarea ----
+  function loadFile(file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".txt") && file.type !== "text/plain") {
+      alert("รองรับเฉพาะไฟล์ .txt ในเวอร์ชันนี้");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => { docText.value = e.target.result; };
+    reader.readAsText(file, "utf-8");
+  }
+
+  fileInput.addEventListener("change", (e) => loadFile(e.target.files[0]));
+
+  // ลากไฟล์มาวาง (drag & drop)
+  ["dragenter", "dragover"].forEach(ev =>
+    drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("drag"); })
+  );
+  ["dragleave", "drop"].forEach(ev =>
+    drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("drag"); })
+  );
+  drop.addEventListener("drop", (e) => loadFile(e.dataTransfer.files[0]));
+  drop.addEventListener("click", () => fileInput.click());
+
+  // ---- ตรรกะการตรวจสอบ ----
+  // สำหรับแต่ละรายการใน checklist เราจะหาในเอกสารแบบ "หัวข้อ: ค่า"
+  // แล้วประเมิน 3 สถานะ: ไม่พบหัวข้อ / พบแต่ว่างเปล่า / กรอกครบ
+  function checkDocument(text, items) {
+    const lines = text.split(/\r?\n/);
+
+    return items.map((item) => {
+      const key = item.trim();
+      if (!key) return null;
+
+      // หาบรรทัดที่ขึ้นต้นด้วยหัวข้อ (รองรับ ":" และ "：")
+      let found = false;
+      let filled = false;
+      let value = "";
+
+      for (const line of lines) {
+        // แยกหัวข้อกับค่าด้วยเครื่องหมาย : หรือ ：
+        const m = line.match(/^(.*?)[:：](.*)$/);
+        if (m) {
+          const label = m[1].trim();
+          if (label === key || label.includes(key)) {
+            found = true;
+            value = m[2].trim();
+            if (value.length > 0) filled = true;
+            break;
+          }
+        } else if (line.trim().includes(key)) {
+          // พบคำแต่ไม่ได้อยู่ในรูปแบบ "หัวข้อ: ค่า"
+          found = true;
+        }
+      }
+
+      let status, note;
+      if (!found)      { status = "missing"; note = "ไม่พบหัวข้อนี้ในเอกสาร"; }
+      else if (!filled){ status = "empty";   note = "พบหัวข้อแต่ยังไม่ได้กรอกข้อมูล"; }
+      else             { status = "ok";      note = "ข้อมูล: " + value; }
+
+      return { key, status, note };
+    }).filter(Boolean);
+  }
+
+  function render(results) {
+    const resultPanel = el("resultPanel");
+    const scoreBox    = el("score");
+    const list        = el("results");
+
+    resultPanel.style.display = "";
+    list.innerHTML = "";
+
+    let passCount = 0;
+    for (const r of results) {
+      const li = document.createElement("li");
+      let icon, cls;
+      if (r.status === "ok")       { icon = "✅"; cls = "ok";  passCount++; }
+      else if (r.status === "empty"){ icon = "⚠️"; cls = "warn"; }
+      else                          { icon = "❌"; cls = "bad"; }
+
+      li.innerHTML =
+        `<span class="icon ${cls}">${icon}</span>` +
+        `<span><b>${escapeHtml(r.key)}</b><br>` +
+        `<span class="detail">${escapeHtml(r.note)}</span></span>`;
+      list.appendChild(li);
+    }
+
+    const total = results.length;
+    const complete = passCount === total && total > 0;
+    scoreBox.className = "score " + (complete ? "pass" : "fail");
+    scoreBox.innerHTML = complete
+      ? `🎉 เอกสารครบถ้วนและกรอกสมบูรณ์ (${passCount}/${total}) — พร้อมส่ง!`
+      : `ผ่าน ${passCount}/${total} รายการ — ยังส่งไม่ได้ กรุณาแก้ไขรายการที่ ⚠️/❌`;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, (c) => (
+      { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]
+    ));
+  }
+
+  el("checkBtn").addEventListener("click", () => {
+    const text  = docText.value;
+    const items = checklist.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    if (!text.trim()) { alert("กรุณาอัปโหลดไฟล์หรือวางข้อความเอกสารก่อน"); return; }
+    if (items.length === 0) { alert("กรุณากำหนดรายการที่ต้องมีอย่างน้อย 1 รายการ"); return; }
+    render(checkDocument(text, items));
+  });
+
+  // ปุ่มใส่ตัวอย่าง
+  el("sampleBtn").addEventListener("click", () => {
+    docText.value =
+`ชื่อ: สมชาย ใจดี
+วันที่: 2026-10-08
+หัวข้อ:
+รายละเอียด: ขอยื่นเอกสารเพื่อพิจารณา
+ลายเซ็น: สมชาย`;
+  });
+</script>
+</body>
+</html>

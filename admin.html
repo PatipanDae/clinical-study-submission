@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Study Document Submissions</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    a { color: #60a5fa; }
+    /* ---- Login ---- */
+    .login-wrap {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px;
+    }
+    .login-card {
+      background: #1e293b; border-radius: 12px; padding: 28px;
+      width: 100%; max-width: 360px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .login-card h1 { margin: 0 0 20px; font-size: 1.3rem; }
+    .login-card label { display:block; font-size:0.8rem; color:#cbd5e1; margin-bottom:6px; font-weight:600; }
+    .login-card input {
+      width: 100%; padding: 10px 12px; margin-bottom: 16px;
+      border: 1px solid #334155; border-radius: 8px;
+      background: #0f172a; color: #e2e8f0; font-size: 0.95rem;
+    }
+    .login-card input:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,0.25); }
+    button {
+      border: none; border-radius: 8px; background: #3b82f6; color: #fff;
+      font-weight: 600; cursor: pointer; transition: background 0.15s;
+    }
+    button:hover { background: #2563eb; }
+    .login-card button { width: 100%; padding: 12px; font-size: 1rem; }
+    .login-err { color:#f87171; font-size:0.82rem; margin-bottom:12px; min-height:1em; }
+
+    /* ---- Dashboard ---- */
+    .topbar {
+      background: #1e293b; border-bottom: 1px solid #334155;
+      padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar h1 { font-size: 1.1rem; margin: 0; }
+    .topbar .right { display:flex; gap:10px; align-items:center; }
+    .logout-btn { background:#475569; padding:7px 14px; font-size:0.85rem; }
+    .logout-btn:hover { background:#64748b; }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 24px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+    .stat {
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px;
+    }
+    .stat .num { font-size: 1.6rem; font-weight: 700; color: #93c5fd; }
+    .stat .lbl { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+    .toolbar { display:flex; gap:10px; margin-bottom:16px; }
+    .toolbar input {
+      flex:1; padding:10px 12px; border:1px solid #334155; border-radius:8px;
+      background:#0f172a; color:#e2e8f0; font-size:0.9rem;
+    }
+    .toolbar button { padding: 10px 16px; font-size: 0.9rem; }
+    .card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+      padding: 16px 18px; margin-bottom: 14px;
+    }
+    .card .head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+    .card .title { font-weight:700; color:#e2e8f0; font-size:0.98rem; }
+    .card .sub { color:#94a3b8; font-size:0.82rem; margin-top:2px; }
+    .card .meta { color:#64748b; font-size:0.75rem; margin-top:8px; }
+    .badge {
+      display:inline-block; background:#0f172a; border:1px solid #334155;
+      border-radius:6px; padding:2px 8px; font-size:0.72rem; color:#cbd5e1; margin:2px 4px 2px 0;
+    }
+    .row { font-size:0.84rem; margin:3px 0; }
+    .row strong { color:#93c5fd; }
+    .files { margin-top:10px; padding-top:10px; border-top:1px dashed #334155; }
+    .file-link { display:block; font-size:0.83rem; margin:4px 0; }
+    .del-btn { background:#7f1d1d; padding:7px 12px; font-size:0.8rem; }
+    .del-btn:hover { background:#991b1b; }
+    .empty { color:#64748b; font-style:italic; padding:20px; text-align:center; }
+    .section-label { font-size:0.78rem; color:#64748b; margin-top:8px; }
+    .hidden { display:none; }
+  </style>
+</head>
+<body>
+  <!-- Dashboard view -->
+  <div id="dashView">
+    <div class="topbar">
+      <h1>Study Document Submissions — Admin</h1>
+      <div class="right">
+        <a href="/" style="font-size:0.85rem;">← Public form</a>
+        <button id="refreshBtn" class="logout-btn">Refresh</button>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="stats" id="stats"></div>
+      <div class="toolbar">
+        <input type="text" id="search" placeholder="Search by title, protocol, sponsor, CRO..." />
+      </div>
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <script>
+    let allSubmissions = [];
+
+    const listEl = document.getElementById("list");
+    const statsEl = document.getElementById("stats");
+    const searchEl = document.getElementById("search");
+
+    const TEXT_FIELDS = [
+      { key: "titleTH", label: "Title (TH)" },
+      { key: "titleEN", label: "Title (EN)" },
+      { key: "protocolNo", label: "Protocol No." },
+      { key: "sirbNo", label: "SIRB/EC No." },
+      { key: "sponsorName", label: "Sponsor" },
+      { key: "croName", label: "CRO" },
+    ];
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str == null ? "" : str;
+      return div.innerHTML;
+    }
+
+    function formatSize(bytes) {
+      if (bytes == null) return "";
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+      return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    }
+
+    document.getElementById("refreshBtn").addEventListener("click", function () {
+      loadStats();
+      loadSubmissions();
+    });
+
+    searchEl.addEventListener("input", function () {
+      renderList(filterSubmissions(searchEl.value.trim().toLowerCase()));
+    });
+
+    async function loadStats() {
+      try {
+        const res = await fetch("/api/admin/stats");
+        const s = await res.json();
+        statsEl.innerHTML =
+          stat(s.submissions, "Submissions") +
+          stat(s.attachments, "Attached files") +
+          stat(formatSize(s.totalBytes), "Total file size");
+      } catch (e) { /* ignore */ }
+    }
+
+    function stat(num, label) {
+      return '<div class="stat"><div class="num">' + escapeHtml(String(num)) +
+             '</div><div class="lbl">' + escapeHtml(label) + "</div></div>";
+    }
+
+    async function loadSubmissions() {
+      listEl.innerHTML = '<p class="empty">Loading...</p>';
+      try {
+        const res = await fetch("/api/submissions");
+        const data = await res.json();
+        allSubmissions = data.submissions || [];
+        renderList(filterSubmissions(searchEl.value.trim().toLowerCase()));
+      } catch (err) {
+        listEl.innerHTML = '<p class="empty">Error loading: ' + escapeHtml(err.message) +
+          ". Is the server running?</p>";
+      }
+    }
+
+    function filterSubmissions(q) {
+      if (!q) return allSubmissions;
+      return allSubmissions.filter(function (s) {
+        const hay = [s.titleTH, s.titleEN, s.protocolNo, s.sirbNo, s.sponsorName, s.croName]
+          .join(" ").toLowerCase();
+        return hay.indexOf(q) !== -1;
+      });
+    }
+
+    function renderList(items) {
+      if (!items.length) {
+        listEl.innerHTML = '<p class="empty">No submissions found.</p>';
+        return;
+      }
+      listEl.innerHTML = items.map(function (s) {
+        let rows = TEXT_FIELDS.map(function (f) {
+          const v = s[f.key];
+          return '<div class="row"><strong>' + escapeHtml(f.label) + "</strong>: " +
+                 (v ? escapeHtml(v) : "<em>—</em>") + "</div>";
+        }).join("");
+
+        const types = (s.sponsorType || []).map(function (t) {
+          return '<span class="badge">' + escapeHtml(t) + "</span>";
+        }).join("") || "<em>—</em>";
+
+        const files = (s.attachments || []).map(function (a) {
+          return '<a class="file-link" href="/uploads/' + encodeURIComponent(a.storedName) +
+                 '" download="' + escapeHtml(a.originalName) + '">⬇ ' +
+                 escapeHtml(a.label) + ": " + escapeHtml(a.originalName) +
+                 " (" + escapeHtml(formatSize(a.sizeBytes)) + ")</a>";
+        }).join("") || '<div class="row"><em>No files</em></div>';
+
+        return (
+          '<div class="card">' +
+            '<div class="head">' +
+              "<div><div class=\"title\">#" + escapeHtml(String(s.id)) + " — " +
+                escapeHtml(s.titleEN || s.titleTH || "(untitled)") + "</div>" +
+                '<div class="sub">' + escapeHtml(s.sponsorName || "") + "</div></div>" +
+              '<button class="del-btn" data-id="' + escapeHtml(String(s.id)) + '">Delete</button>' +
+            "</div>" +
+            rows +
+            '<div class="section-label">Sponsor type:</div>' + types +
+            '<div class="files"><div class="section-label">Attachments:</div>' + files + "</div>" +
+            '<div class="meta">Submitted: ' + escapeHtml(s.createdAt) + "</div>" +
+          "</div>"
+        );
+      }).join("");
+
+      // Wire delete buttons
+      listEl.querySelectorAll(".del-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () { deleteSubmission(btn.dataset.id); });
+      });
+    }
+
+    async function deleteSubmission(id) {
+      if (!confirm("Delete submission #" + id + " and all its files? This cannot be undone.")) return;
+      try {
+        const res = await fetch("/api/admin/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: Number(id) }),
+        });
+        const data = await res.json().catch(function () { return {}; });
+        if (res.ok && data.ok) {
+          loadStats();
+          loadSubmissions();
+        } else {
+          alert("Delete failed: " + (data.error || ("HTTP " + res.status)));
+        }
+      } catch (err) {
+        alert("Delete error: " + err.message);
+      }
+    }
+
+    // Load data immediately (no login required)
+    loadStats();
+    loadSubmissions();
+  </script>
+</body>
+</html>

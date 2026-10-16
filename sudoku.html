@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sudoku</title>
+<style>
+  :root {
+    --bg: #1e1e2e;
+    --panel: #27293d;
+    --cell: #2e3047;
+    --cell-fixed: #3a3d5c;
+    --border: #4a4d6a;
+    --thick: #8b8fb3;
+    --accent: #7aa2f7;
+    --highlight: #353a5c;
+    --selected: #44507a;
+    --text: #e0e0f0;
+    --fixed-text: #c0c4e0;
+    --error: #f7768e;
+    --success: #9ece6a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f72585 0%, #7209b7 25%, #3a0ca3 50%, #4361ee 75%, #4cc9f0 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+  h1 { margin: 0 0 16px; font-weight: 600; letter-spacing: 1px; }
+  .controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  select, button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  select:hover, button:hover { border-color: var(--accent); }
+  button:active { background: var(--selected); }
+  #board {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    width: min(90vw, 450px);
+    aspect-ratio: 1;
+    background: var(--thick);
+    gap: 1px;
+    border: 3px solid var(--thick);
+    border-radius: 6px;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+  .cell {
+    background: var(--cell);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(16px, 5vw, 26px);
+    cursor: pointer;
+    user-select: none;
+    aspect-ratio: 1;
+  }
+  .cell.fixed { background: var(--cell-fixed); color: var(--fixed-text); font-weight: 700; }
+  .cell.highlight { background: var(--highlight); }
+  .cell.selected { background: var(--selected); outline: 2px solid var(--accent); outline-offset: -2px; }
+  .cell.same { color: var(--accent); font-weight: 700; }
+  .cell.error { color: var(--error); }
+  /* thick 3x3 separators */
+  .cell.br { border-right: 2px solid var(--thick); }
+  .cell.bb { border-bottom: 2px solid var(--thick); }
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    width: min(90vw, 450px);
+    margin-top: 16px;
+  }
+  .numpad button { padding: 14px 0; font-size: 18px; }
+  #message { margin-top: 14px; min-height: 24px; font-size: 16px; font-weight: 600; }
+  #message.win { color: var(--success); }
+  #message.info { color: var(--accent); }
+</style>
+</head>
+<body>
+  <h1>Sudoku</h1>
+  <div class="controls">
+    <select id="difficulty">
+      <option value="45">Easy</option>
+      <option value="36" selected>Medium</option>
+      <option value="28">Hard</option>
+    </select>
+    <button id="newGame">New Game</button>
+    <button id="check">Check</button>
+    <button id="solve">Solve</button>
+    <button id="reset">Reset</button>
+  </div>
+  <div id="board"></div>
+  <div class="numpad" id="numpad"></div>
+  <div id="message"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const SIZE = 9;
+  const boardEl = document.getElementById("board");
+  const numpadEl = document.getElementById("numpad");
+  const messageEl = document.getElementById("message");
+  const difficultyEl = document.getElementById("difficulty");
+
+  let solution = [];   // full solved grid
+  let puzzle = [];     // starting clues (0 = empty)
+  let current = [];    // player's current grid
+  let fixed = [];      // boolean grid: true if a given clue
+  let cells = [];      // DOM cell references, 81 flat
+  let selected = -1;   // selected cell index 0..80
+
+  // ---------- Sudoku engine ----------
+
+  const shuffle = (arr) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+
+  const isSafe = (grid, row, col, num) => {
+    for (let i = 0; i < SIZE; i++) {
+      if (grid[row][i] === num || grid[i][col] === num) return false;
+    }
+    const br = row - (row % 3), bc = col - (col % 3);
+    for (let r = 0; r < 3; r++)
+      for (let c = 0; c < 3; c++)
+        if (grid[br + r][bc + c] === num) return false;
+    return true;
+  };
+
+  // Fill an empty grid with a complete valid solution via randomized backtracking.
+  const fillGrid = (grid) => {
+    for (let i = 0; i < 81; i++) {
+      const row = Math.floor(i / 9), col = i % 9;
+      if (grid[row][col] === 0) {
+        const nums = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        for (const num of nums) {
+          if (isSafe(grid, row, col, num)) {
+            grid[row][col] = num;
+            if (fillGrid(grid)) return true;
+            grid[row][col] = 0;
+          }
+        }
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // Count solutions, capped at `limit` for performance.
+  const countSolutions = (grid, limit = 2) => {
+    let count = 0;
+    const solve = () => {
+      for (let i = 0; i < 81; i++) {
+        const row = Math.floor(i / 9), col = i % 9;
+        if (grid[row][col] === 0) {
+          for (let num = 1; num <= 9; num++) {
+            if (isSafe(grid, row, col, num)) {
+              grid[row][col] = num;
+              solve();
+              grid[row][col] = 0;
+              if (count >= limit) return;
+            }
+          }
+          return; // no valid number -> dead end
+        }
+      }
+      count++;
+    };
+    solve();
+    return count;
+  };
+
+  const emptyGrid = () => Array.from({ length: 9 }, () => Array(9).fill(0));
+  const cloneGrid = (g) => g.map((row) => row.slice());
+
+  const generatePuzzle = (clues) => {
+    const full = emptyGrid();
+    fillGrid(full);
+    solution = cloneGrid(full);
+
+    const p = cloneGrid(full);
+    // positions to attempt removal, in random order
+    const positions = shuffle([...Array(81).keys()]);
+    let remaining = 81;
+
+    for (const pos of positions) {
+      if (remaining <= clues) break;
+      const row = Math.floor(pos / 9), col = pos % 9;
+      const backup = p[row][col];
+      if (backup === 0) continue;
+      p[row][col] = 0;
+      // verify uniqueness
+      const test = cloneGrid(p);
+      if (countSolutions(test, 2) !== 1) {
+        p[row][col] = backup; // revert, keeps unique solution
+      } else {
+        remaining--;
+      }
+    }
+    return p;
+  };
+
+  // ---------- Rendering ----------
+
+  const buildBoard = () => {
+    boardEl.innerHTML = "";
+    cells = [];
+    for (let i = 0; i < 81; i++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      const col = i % 9, row = Math.floor(i / 9);
+      if (col === 2 || col === 5) cell.classList.add("br");
+      if (row === 2 || row === 5) cell.classList.add("bb");
+      cell.addEventListener("click", () => selectCell(i));
+      boardEl.appendChild(cell);
+      cells.push(cell);
+    }
+  };
+
+  const buildNumpad = () => {
+    numpadEl.innerHTML = "";
+    for (let n = 1; n <= 9; n++) {
+      const b = document.createElement("button");
+      b.textContent = n;
+      b.addEventListener("click", () => enterNumber(n));
+      numpadEl.appendChild(b);
+    }
+    const erase = document.createElement("button");
+    erase.textContent = "⌫";
+    erase.addEventListener("click", () => enterNumber(0));
+    numpadEl.appendChild(erase);
+  };
+
+  const render = () => {
+    for (let i = 0; i < 81; i++) {
+      const row = Math.floor(i / 9), col = i % 9;
+      const val = current[row][col];
+      const cell = cells[i];
+      cell.textContent = val === 0 ? "" : val;
+      cell.classList.remove("fixed", "highlight", "selected", "same", "error");
+      if (fixed[row][col]) cell.classList.add("fixed");
+    }
+    applyHighlights();
+  };
+
+  const applyHighlights = () => {
+    cells.forEach((c) => c.classList.remove("highlight", "selected", "same"));
+    if (selected < 0) return;
+    const sRow = Math.floor(selected / 9), sCol = selected % 9;
+    const sVal = current[sRow][sCol];
+    const bRow = sRow - (sRow % 3), bCol = sCol - (sCol % 3);
+    for (let i = 0; i < 81; i++) {
+      const row = Math.floor(i / 9), col = i % 9;
+      const inBox = row >= bRow && row < bRow + 3 && col >= bCol && col < bCol + 3;
+      if (row === sRow || col === sCol || inBox) cells[i].classList.add("highlight");
+      if (sVal !== 0 && current[row][col] === sVal) cells[i].classList.add("same");
+    }
+    cells[selected].classList.add("selected");
+  };
+
+  // ---------- Interaction ----------
+
+  const selectCell = (i) => {
+    selected = i;
+    applyHighlights();
+  };
+
+  const enterNumber = (n) => {
+    if (selected < 0) return;
+    const row = Math.floor(selected / 9), col = selected % 9;
+    if (fixed[row][col]) return;
+    current[row][col] = n;
+    clearMessage();
+    cells[selected].classList.remove("error");
+    cells[selected].textContent = n === 0 ? "" : n;
+    applyHighlights();
+    checkWin();
+  };
+
+  const checkWin = () => {
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (current[r][c] !== solution[r][c]) return;
+    setMessage("🎉 Solved! Well done!", "win");
+    selected = -1;
+    applyHighlights();
+  };
+
+  const checkBoard = () => {
+    let hasError = false;
+    for (let i = 0; i < 81; i++) {
+      const row = Math.floor(i / 9), col = i % 9;
+      cells[i].classList.remove("error");
+      const val = current[row][col];
+      if (val !== 0 && !fixed[row][col] && val !== solution[row][col]) {
+        cells[i].classList.add("error");
+        hasError = true;
+      }
+    }
+    if (hasError) setMessage("Some entries are incorrect.", "info");
+    else setMessage("No mistakes so far!", "info");
+  };
+
+  const solveBoard = () => {
+    current = cloneGrid(solution);
+    render();
+    setMessage("Here is the solution.", "info");
+    selected = -1;
+    applyHighlights();
+  };
+
+  const resetBoard = () => {
+    current = cloneGrid(puzzle);
+    clearMessage();
+    render();
+  };
+
+  const newGame = () => {
+    const clues = parseInt(difficultyEl.value, 10);
+    setMessage("Generating…", "info");
+    // let the message paint before heavy work
+    setTimeout(() => {
+      puzzle = generatePuzzle(clues);
+      current = cloneGrid(puzzle);
+      fixed = puzzle.map((row) => row.map((v) => v !== 0));
+      selected = -1;
+      clearMessage();
+      render();
+    }, 20);
+  };
+
+  const setMessage = (text, cls = "") => {
+    messageEl.textContent = text;
+    messageEl.className = cls;
+  };
+  const clearMessage = () => setMessage("");
+
+  // ---------- Keyboard ----------
+
+  document.addEventListener("keydown", (e) => {
+    if (selected < 0) {
+      if (e.key.startsWith("Arrow")) { selected = 0; applyHighlights(); e.preventDefault(); }
+      return;
+    }
+    let row = Math.floor(selected / 9), col = selected % 9;
+    if (e.key >= "1" && e.key <= "9") { enterNumber(parseInt(e.key, 10)); e.preventDefault(); }
+    else if (e.key === "0" || e.key === "Backspace" || e.key === "Delete") { enterNumber(0); e.preventDefault(); }
+    else if (e.key === "ArrowUp") { row = (row + 8) % 9; selected = row * 9 + col; applyHighlights(); e.preventDefault(); }
+    else if (e.key === "ArrowDown") { row = (row + 1) % 9; selected = row * 9 + col; applyHighlights(); e.preventDefault(); }
+    else if (e.key === "ArrowLeft") { col = (col + 8) % 9; selected = row * 9 + col; applyHighlights(); e.preventDefault(); }
+    else if (e.key === "ArrowRight") { col = (col + 1) % 9; selected = row * 9 + col; applyHighlights(); e.preventDefault(); }
+  });
+
+  // ---------- Wire up ----------
+
+  document.getElementById("newGame").addEventListener("click", newGame);
+  document.getElementById("check").addEventListener("click", checkBoard);
+  document.getElementById("solve").addEventListener("click", solveBoard);
+  document.getElementById("reset").addEventListener("click", resetBoard);
+
+  buildBoard();
+  buildNumpad();
+  newGame();
+})();
+</script>
+</body>
+</html>

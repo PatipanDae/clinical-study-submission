@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Review Panel — Study Document Submissions</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a; color: #e2e8f0; min-height: 100vh;
+    }
+    a { color: #60a5fa; }
+    button { border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.15s; }
+    .topbar {
+      background: #1e293b; border-bottom: 1px solid #334155;
+      padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar h1 { font-size: 1.1rem; margin: 0; }
+    .topbar .right { display:flex; gap:14px; align-items:center; }
+    .btn-ghost { background:#475569; color:#fff; padding:7px 14px; font-size:0.85rem; }
+    .btn-ghost:hover { background:#64748b; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+    .stat { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; }
+    .stat .num { font-size: 1.5rem; font-weight: 700; color: #93c5fd; }
+    .stat .lbl { font-size: 0.78rem; color: #94a3b8; margin-top: 4px; }
+    .toolbar { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+    .toolbar input, .toolbar select {
+      padding:10px 12px; border:1px solid #334155; border-radius:8px;
+      background:#0f172a; color:#e2e8f0; font-size:0.9rem;
+    }
+    .toolbar input { flex:1; min-width:220px; }
+    .count-note { font-size:0.8rem; color:#64748b; margin-left:auto; }
+
+    /* table */
+    .table-wrap { background:#1e293b; border:1px solid #334155; border-radius:10px; overflow:hidden; }
+    table { width:100%; border-collapse:collapse; font-size:0.86rem; table-layout:fixed; }
+    thead th {
+      text-align:left; padding:11px 12px; background:#0f172a; color:#cbd5e1;
+      font-size:0.76rem; text-transform:uppercase; letter-spacing:0.03em;
+      border-bottom:1px solid #334155; cursor:pointer; user-select:none; white-space:nowrap;
+    }
+    thead th.no-sort { cursor:default; }
+    thead th .arrow { color:#60a5fa; font-size:0.7rem; margin-left:3px; }
+    tbody td { padding:10px 12px; border-bottom:1px solid #273449; vertical-align:middle; overflow:hidden; text-overflow:ellipsis; }
+    tbody tr.main-row { cursor:pointer; }
+    tbody tr.main-row:hover { background:#243049; }
+    tbody tr.expanded-row > td { background:#182233; padding:0; overflow:visible; }
+    .id-cell { color:#64748b; font-variant-numeric:tabular-nums; }
+    /* Study title gets the flexible space; wrap up to 2 lines, EN then TH */
+    .title-cell { font-weight:600; white-space:normal; line-height:1.3; }
+    .title-cell .th { color:#94a3b8; font-weight:400; font-size:0.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+    /* Applicant / Sponsor: single line, ellipsis if too long */
+    td[data-col="applicant"], td[data-col="sponsor"] { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .muted { color:#94a3b8; }
+    .nowrap { white-space:nowrap; }
+
+    .status-pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:0.72rem; font-weight:700; white-space:nowrap; }
+    .st-Pending { background:#422006; color:#fbbf24; border:1px solid #a16207; }
+    .st-Approved { background:#052e1a; color:#4ade80; border:1px solid #15803d; }
+    .st-Rejected { background:#450a0a; color:#f87171; border:1px solid #b91c1c; }
+    .st-Needs-revision { background:#422006; color:#fdba74; border:1px solid #c2410c; }
+    .st-In-review { background:#172554; color:#93c5fd; border:1px solid #1d4ed8; }
+
+    /* AI analysis */
+    .ai-badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:0.72rem; font-weight:700; white-space:nowrap; }
+    .ai-queued { background:#1e293b; color:#fbbf24; border:1px solid #a16207; }
+    .ai-proc { background:#1e293b; color:#93c5fd; border:1px solid #1d4ed8; }
+    .v-ok { background:#052e1a; color:#4ade80; border:1px solid #15803d; }
+    .v-warn { background:#422006; color:#fdba74; border:1px solid #c2410c; }
+    .v-bad { background:#450a0a; color:#f87171; border:1px solid #b91c1c; }
+    .v-none { background:#1e293b; color:#94a3b8; border:1px solid #334155; }
+    .ai-panel { background:#0f172a; border:1px solid #334155; border-radius:10px; padding:14px; font-size:0.84rem; }
+    .ai-top { display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+    .ai-metric { font-size:0.88rem; }
+    .ai-missing { color:#fdba74; font-size:0.8rem; margin-bottom:10px; }
+    .ai-cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:6px; }
+    .ai-h { font-size:0.76rem; color:#64748b; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:6px; }
+    .ai-sec { margin:5px 0; }
+    .ai-sum { color:#94a3b8; font-size:0.78rem; margin:2px 0 0 18px; }
+    .ai-yes { color:#4ade80; font-weight:700; }
+    .ai-no { color:#f87171; font-weight:700; }
+    .ai-rule { margin:5px 0; font-size:0.82rem; }
+    .ai-sev { font-size:0.68rem; padding:1px 6px; border-radius:4px; text-transform:uppercase; }
+    .sev-critical { background:#450a0a; color:#f87171; }
+    .sev-major { background:#422006; color:#fdba74; }
+    .sev-minor { background:#1e293b; color:#94a3b8; }
+    .ai-detail { color:#64748b; font-size:0.78rem; }
+    .ai-docsum { margin-top:10px; padding-top:10px; border-top:1px dashed #334155; color:#cbd5e1; }
+    .ai-src { font-size:0.72rem; color:#60a5fa; background:#0f172a; border:1px solid #1d4ed8; border-radius:5px; padding:0 6px; }
+    .ai-analyzed { font-size:0.76rem; color:#64748b; margin-bottom:8px; }
+    .rerun-ai-btn { background:#fff; border:1px solid #cbd5e1; color:#2563eb; border-radius:7px; padding:3px 10px; font-size:0.72rem; font-weight:700; cursor:pointer; }
+    .rerun-ai-btn:hover { background:#eff6ff; }
+    .rerun-ai-btn:disabled { opacity:.6; cursor:default; }
+    .ai-recs { margin:10px 0; }
+    .ai-rec { font-size:0.82rem; border-radius:8px; padding:8px 11px; margin:5px 0; border-left:3px solid #334155; background:#0f172a; }
+    .rec-critical { border-left-color:#b91c1c; color:#fca5a5; }
+    .rec-action { border-left-color:#3b82f6; color:#bfdbfe; }
+    .rec-warn { border-left-color:#c2410c; color:#fdba74; }
+    .rec-ok { border-left-color:#15803d; color:#86efac; }
+    @media (max-width:720px) { .ai-cols { grid-template-columns:1fr; } }
+    .rev-badge { background:#172554; color:#93c5fd; border:1px solid #1d4ed8; border-radius:6px; padding:1px 7px; font-size:0.72rem; font-weight:700; }
+    .resub-note { background:#0f172a; border:1px solid #334155; border-left:3px solid #3b82f6; border-radius:6px; padding:8px 10px; margin-top:6px; font-size:0.82rem; color:#cbd5e1; }
+    .title-rev { background:#172554; color:#93c5fd; border:1px solid #1d4ed8; border-radius:5px; padding:0 6px; font-size:0.68rem; font-weight:700; margin-left:6px; }
+    /* Help desk tickets */
+    .hd-tickets { background:#1e293b; border:1px solid #334155; border-radius:10px; margin-bottom:18px; overflow:hidden; }
+    .hd-th { padding:12px 16px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-weight:700; font-size:0.92rem; }
+    .hd-th:hover { background:#243049; }
+    .hd-badge { background:#7f1d1d; color:#fecaca; border-radius:999px; padding:1px 8px; font-size:0.72rem; margin-left:6px; }
+    .hd-badge.zero { background:#334155; color:#94a3b8; }
+    .hd-caret { color:#64748b; transition:transform .15s; }
+    .hd-caret.open { transform:rotate(90deg); color:#60a5fa; }
+    .hd-list { border-top:1px solid #334155; }
+    .hd-ticket { padding:12px 16px; border-bottom:1px solid #273449; }
+    .hd-ticket:last-child { border-bottom:none; }
+    .hd-trow { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .hd-tsub { font-weight:600; font-size:0.88rem; }
+    .hd-tstatus { font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:999px; }
+    .ts-awaiting_staff { background:#422006; color:#fbbf24; border:1px solid #a16207; }
+    .ts-answered { background:#052e1a; color:#4ade80; border:1px solid #15803d; }
+    .ts-open { background:#172554; color:#93c5fd; border:1px solid #1d4ed8; }
+    .ts-closed { background:#334155; color:#94a3b8; }
+    .hd-thread { margin-top:10px; display:none; }
+    .hd-thread.open { display:block; }
+    .hd-m { font-size:0.82rem; margin:5px 0; padding:7px 10px; border-radius:8px; max-width:90%; white-space:pre-wrap; }
+    .hd-m-user { background:#eff6ff; border:1px solid #bfdbfe; color:#0f172a; }
+    .hd-m-bot { background:#f8fafc; border:1px solid #e2e8f0; color:#334155; }
+    .hd-m-staff { background:#ecfdf5; border:1px solid #a7f3d0; color:#166534; margin-left:auto; }
+    .hd-m .who { font-size:0.66rem; color:#64748b; margin-bottom:2px; }
+    .hd-reply { display:flex; gap:8px; margin-top:8px; }
+    .hd-reply input { flex:1; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; background:#ffffff; color:#0f172a; font-size:0.84rem; }
+    .hd-reply button { background:#3b82f6; color:#fff; border:none; border-radius:8px; padding:0 14px; font-weight:600; cursor:pointer; font-size:0.84rem; }
+    .hd-view { color:#60a5fa; font-size:0.78rem; cursor:pointer; }
+
+    /* per-track review boxes */
+    .tracks { display:grid; grid-template-columns:1fr; gap:12px; }
+    .track-box { background:#0f172a; border:1px solid #334155; border-radius:10px; padding:12px 14px; }
+    .track-head { display:flex; align-items:center; gap:10px; margin-bottom:9px; flex-wrap:wrap; }
+    .track-name { font-weight:700; font-size:0.9rem; color:#e2e8f0; }
+    .track-meta { font-size:0.74rem; color:#64748b; }
+    .rv-reviewer { width:170px; }
+
+    .caret { display:inline-block; width:14px; color:#64748b; transition:transform 0.15s; }
+    tr.open .caret { transform:rotate(90deg); color:#60a5fa; }
+
+    /* detail panel */
+    .detail { padding:16px 20px; }
+    .detail .grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; }
+    .row { font-size:0.84rem; margin:3px 0; }
+    .row strong { color:#93c5fd; }
+    .section-label { font-size:0.76rem; color:#64748b; margin:12px 0 4px; text-transform:uppercase; letter-spacing:0.03em; }
+    .badge { display:inline-block; background:#0f172a; border:1px solid #334155; border-radius:6px; padding:2px 8px; font-size:0.72rem; color:#cbd5e1; margin:2px 4px 2px 0; }
+    .file-link { display:block; font-size:0.83rem; margin:4px 0; }
+
+    .review-box { margin-top:12px; padding-top:12px; border-top:1px solid #334155; }
+    .review-box label { font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:5px; }
+    .review-row { display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap; }
+    .review-box select, .review-box textarea {
+      border:1px solid #334155; border-radius:8px; background:#0f172a; color:#e2e8f0; font-size:0.88rem; font-family:inherit; padding:9px 11px;
+    }
+    .review-box textarea { flex:1; min-width:240px; min-height:42px; resize:vertical; }
+    .save-btn { background:#3b82f6; color:#fff; padding:9px 16px; font-size:0.88rem; }
+    .save-btn:hover { background:#2563eb; }
+    .del-btn { background:#7f1d1d; color:#fff; padding:9px 14px; font-size:0.84rem; }
+    .del-btn:hover { background:#991b1b; }
+    .save-ok { color:#4ade80; font-size:0.8rem; align-self:center; display:none; }
+    .empty { color:#64748b; font-style:italic; padding:24px; text-align:center; }
+  </style>
+  <style id="enterprise-theme">
+/* ============================================================================
+   Enterprise SaaS theme — LIGHT MODE
+   Clinical Research Administration Platform. Visual layer loaded LAST so it
+   refines look WITHOUT changing markup/content/JS. Overrides the pages'
+   hardcoded dark colors to a clean, professional white/slate palette.
+   ============================================================================ */
+
+:root {
+  --app-bg:        #f1f5f9;   /* page background (soft gray) */
+  --surface-1:     #ffffff;   /* cards / panels */
+  --surface-2:     #f8fafc;   /* inputs / insets */
+  --surface-3:     #eef2f7;   /* hover / elevated rows */
+  --border:        #e2e8f0;
+  --border-soft:   #eef2f7;
+  --text:          #0f172a;
+  --text-muted:    #475569;
+  --text-dim:      #94a3b8;
+  --brand:         #2563eb;
+  --brand-strong:  #1d4ed8;
+  --brand-tint:    rgba(37,99,235,.12);
+  --ok:#15803d; --ok-bg:#e9f8ef; --ok-bd:#86efac;
+  --warn:#b45309; --warn-bg:#fef5e7; --warn-bd:#fcd9a5;
+  --danger:#b91c1c; --danger-bg:#fdecec; --danger-bd:#f6b7b7;
+  --info:#1d4ed8; --info-bg:#e8f0ff; --info-bd:#bcd3ff;
+  --radius:12px; --radius-sm:9px;
+  --shadow:0 1px 2px rgba(16,24,40,.06), 0 8px 24px -14px rgba(16,24,40,.25);
+  --font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans Thai",sans-serif;
+}
+
+/* ---- base ---- */
+body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(37,99,235,.05), transparent 60%),
+    var(--app-bg) !important;
+  color: var(--text) !important;
+  font-family: var(--font) !important;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: .1px;
+  border-top: 4px solid var(--brand) !important;
+}
+a { color: var(--brand) !important; }
+
+/* ---- full-width layout (use the whole screen) ---- */
+.container { width: 100% !important; max-width: 1100px !important; margin: 0 auto !important; }
+.wrap { max-width: 1320px !important; margin: 0 auto !important; }
+/* give centered single-card pages (submission/result) breathing room + top gap */
+body { padding-left: 24px; padding-right: 24px; }
+
+/* ---- generic dark-surface overrides (catch hardcoded colors) ---- */
+.card, .table-wrap, .stat, .ai-panel, .login-card,
+.container .card, .doc-field, .track-box, .hd-tickets, .ai-rec,
+.comment-box, .resub-note, .conditional, .choice, .section-note {
+  background: var(--surface-1) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+.card, .table-wrap, .stat, .ai-panel, .login-card {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+/* text colors */
+h1, h2, h3, .title, .doc-name, .track-name, .tl-label, .hd-tsub { color: var(--text) !important; }
+.subtitle, p.subtitle, .muted, .count-note, .section-label, .lbl,
+.ai-h, .meta, .card .sub, .note-hint, .hint, .ai-detail, .track-meta,
+.tl-date, .hd-th .muted { color: var(--text-muted) !important; }
+.field-label, label, .rf-label { color: #334155 !important; }
+
+/* ---- headings / section titles ---- */
+h1 { letter-spacing: -.2px; font-weight: 700; }
+.section-title {
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--border) !important;
+  font-weight: 700 !important;
+}
+.section-title::before {
+  content: ""; display: inline-block; width: 3px; height: 1em;
+  background: var(--brand); border-radius: 2px; margin-right: 9px; vertical-align: -2px;
+}
+
+/* ---- top bar ---- */
+.topbar {
+  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: var(--shadow);
+}
+.topbar h1 { font-size: 1.05rem; color: var(--text) !important; }
+
+/* ---- inputs ---- */
+input[type="text"], input[type="email"], input[type="password"],
+textarea, select, .lookup input, .toolbar input, .toolbar select,
+.review-box select, .review-box textarea, .hd-reply input, .hd-row input,
+.resubmit textarea, .resubmit input {
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text) !important;
+}
+input::placeholder, textarea::placeholder { color: #94a3b8 !important; }
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px var(--brand-tint) !important;
+}
+
+/* ---- buttons ---- */
+button[type="submit"], .save-btn, .lookup button, .resubmit button, .hd-send, .hd-fab {
+  background: linear-gradient(180deg, var(--brand), var(--brand-strong)) !important;
+  border: none !important; color: #fff !important;
+  border-radius: var(--radius-sm) !important; font-weight: 600 !important;
+  box-shadow: var(--shadow);
+}
+button[type="submit"]:hover, .save-btn:hover, .lookup button:hover,
+.resubmit button:hover, .hd-send:hover, .hd-fab:hover { filter: brightness(1.06); }
+.btn-ghost, .clear-btn, .clear-file, .hd-esc, .hd-view {
+  background: #fff !important; border: 1px solid var(--border) !important; color: var(--text-muted) !important;
+}
+.btn-ghost:hover, .clear-btn:hover, .clear-file:hover, .hd-esc:hover { background: var(--surface-3) !important; color: var(--text) !important; }
+.del-btn { background: #fdecec !important; color: #b91c1c !important; border: 1px solid #f6b7b7 !important; }
+.del-btn:hover { background: #fbd9d9 !important; }
+
+/* ---- status badges ---- */
+.status-pill, .ai-badge, .hd-tstatus, .badge, .pill {
+  border-radius: 999px !important; font-weight: 700 !important;
+}
+.st-Approved  { background: var(--ok-bg)!important;    color: var(--ok)!important;    border:1px solid var(--ok-bd)!important; }
+.st-Rejected  { background: var(--danger-bg)!important; color: var(--danger)!important; border:1px solid var(--danger-bd)!important; }
+.st-Pending   { background: var(--warn-bg)!important;  color: var(--warn)!important;  border:1px solid var(--warn-bd)!important; }
+.st-Needs-revision { background: var(--warn-bg)!important; color:#c2410c!important;   border:1px solid var(--warn-bd)!important; }
+.st-In-review { background: var(--info-bg)!important;  color: var(--info)!important;  border:1px solid var(--info-bd)!important; }
+.badge { background: var(--surface-2)!important; border:1px solid var(--border)!important; color: var(--text-muted)!important; }
+
+/* ---- stat tiles ---- */
+.stats { gap: 16px; }
+.stat { padding: 18px !important; position: relative; overflow: hidden; }
+.stat::after { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background: var(--brand); }
+.stat .num { color: var(--brand) !important; font-weight: 800 !important; letter-spacing: -.5px; }
+.stat .lbl { color: var(--text-muted) !important; text-transform: uppercase; letter-spacing: .5px; font-size: .7rem !important; }
+
+/* ---- data table ---- */
+table thead th { background: var(--surface-2) !important; color: var(--text-muted) !important; border-bottom: 1px solid var(--border) !important; }
+tbody td { border-bottom: 1px solid var(--border-soft) !important; color: var(--text) !important; }
+tbody tr.main-row:hover { background: var(--surface-3) !important; }
+tbody tr.expanded-row > td { background: #f8fafc !important; }
+.id-cell { color: var(--text-dim) !important; }
+.title-cell .th { color: var(--text-muted) !important; }
+
+/* ---- detail / review ---- */
+.detail { padding: 18px 20px !important; }
+.track-box { background: var(--surface-2) !important; border: 1px solid var(--border) !important; }
+.review-box { border-top: 1px solid var(--border) !important; }
+.row strong { color: #1d4ed8 !important; }
+
+/* ---- AI panel ---- */
+.ai-panel { background: var(--surface-2) !important; }
+.ai-rec { background: #fff !important; }
+.ai-yes { color: var(--ok) !important; } .ai-no { color: var(--danger) !important; }
+.ai-src { color: var(--brand) !important; background: var(--info-bg) !important; border: 1px solid var(--info-bd) !important; }
+.ai-sum, .ai-analyzed { color: var(--text-muted) !important; }
+
+/* ---- timeline ---- */
+.tl-step .dot { background: #fff !important; border-color: var(--border) !important; color: var(--text-dim) !important; }
+.tl-step.done .dot, .tl-step.current .dot { background: var(--brand) !important; border-color: var(--brand) !important; color: #fff !important; box-shadow: 0 0 0 4px var(--brand-tint); }
+.tl-step:not(:first-child)::before { background: var(--border) !important; }
+.tl-step.done:not(:first-child)::before, .tl-step.current:not(:first-child)::before { background: var(--brand) !important; }
+.tl-label { color: var(--text) !important; }
+
+/* ---- help desk chat widget (light) ---- */
+.hd-panel { background: #fff !important; border: 1px solid var(--border) !important; box-shadow: 0 10px 40px rgba(16,24,40,.18) !important; }
+.hd-head { background: var(--surface-2) !important; border-bottom: 1px solid var(--border) !important; }
+.hd-head .t { color: var(--text) !important; }
+.hd-body { background: #fff !important; }
+.hd-foot { background: var(--surface-2) !important; border-top: 1px solid var(--border) !important; }
+.hd-bot { background: var(--surface-2) !important; color: var(--text) !important; border: 1px solid var(--border) !important; }
+.hd-user { background: var(--brand) !important; color: #fff !important; }
+.hd-staff { background: var(--ok-bg) !important; color: #166534 !important; border: 1px solid var(--ok-bd) !important; }
+
+/* ---- messages ---- */
+.success { background: var(--ok-bg) !important; border: 1px solid var(--ok-bd) !important; color: #166534 !important; }
+.error, .rf-err { color: #dc2626 !important; }
+
+/* scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Study Document Submissions — Review Panel</h1>
+    <div class="right">
+      <a class="navlink" data-path="/" href="/" style="font-size:0.85rem;">← Submission form</a>
+      <a class="navlink" data-path="/result" href="/result" style="font-size:0.85rem;">Result lookup</a>
+      <a class="navlink" data-path="/audit" href="/audit" style="font-size:0.85rem;">Audit Log</a>
+      <a class="navlink" data-path="/helpdesk" href="/helpdesk" style="font-size:0.85rem;">Help Desk</a>
+      <button id="refreshBtn" class="btn-ghost">Refresh</button>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="stats" id="stats"></div>
+
+    <div class="toolbar">
+      <input type="text" id="search" placeholder="Search title, protocol, sponsor, CRO, applicant, email..." />
+      <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="Pending">Pending</option>
+        <option value="In review">In review</option>
+        <option value="Approved">Approved</option>
+        <option value="Rejected">Rejected</option>
+        <option value="Needs revision">Needs revision</option>
+      </select>
+      <span class="count-note" id="countNote"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr id="headRow">
+            <th class="no-sort" style="width:34px;"></th>
+            <th data-sort="id" style="width:54px;">ID</th>
+            <th data-sort="status" style="width:116px;">Status</th>
+            <th data-sort="aiCompleteness" style="width:104px;">AI check</th>
+            <th data-sort="titleEN">Study title</th>
+            <th data-sort="protocolNo" style="width:128px;">Protocol No.</th>
+            <th data-sort="applicant" style="width:130px;">Applicant</th>
+            <th data-sort="sponsorName" style="width:150px;">Sponsor</th>
+            <th data-sort="createdAt" style="width:120px;">Submitted</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="emptyMsg"></div>
+  </div>
+
+  <script>
+    const BASE = (function () {
+      var p = window.location.pathname;
+      var routes = ["/index.html", "/submission.html", "/admin", "/admin.html",
+                    "/review", "/review.html", "/result-preview", "/result-preview.html",
+                    "/result", "/result.html"];
+      for (var i = 0; i < routes.length; i++) {
+        if (p === routes[i] || p.endsWith(routes[i])) return p.slice(0, p.length - routes[i].length);
+      }
+      if (p.endsWith("/")) return p.slice(0, -1);
+      return p;
+    })();
+    function u(path) { return BASE + path; }
+    // GET helper that defeats CDN/proxy caching by appending a timestamp.
+    function g(path) { return u(path) + (path.indexOf("?") === -1 ? "?" : "&") + "_=" + Date.now(); }
+
+    // ---- auth: send bearer token (cookie also set at login) ----
+    var SESSION = { role: null, name: null };
+    function token() { return sessionStorage.getItem("staff_token"); }
+    function authHeaders(extra) {
+      var h = extra || {}; var t = token();
+      if (t) h["Authorization"] = "Bearer " + t;
+      return h;
+    }
+    function gotoLogin() {
+      location.href = u("/login?next=/review");
+    }
+    async function requireLogin() {
+      try {
+        var r = await fetch(g("/api/me"), { headers: authHeaders() });
+        var d = await r.json();
+        if (!d.authenticated) { gotoLogin(); return false; }
+        SESSION.role = d.role; SESSION.name = d.name; SESSION.username = d.username;
+        return true;
+      } catch (e) { gotoLogin(); return false; }
+    }
+    function canEditTrack(track) {
+      if (SESSION.role === "admin") return true;
+      if (SESSION.role === "legal") return track === "Legal";
+      if (SESSION.role === "bd") return track === "Business Development";
+      return false;
+    }
+
+    let allSubmissions = [];
+    let sortKey = "id";
+    let sortDir = "desc";          // 'asc' | 'desc'
+    const expanded = new Set();    // ids currently expanded
+
+    const tbody = document.getElementById("tbody");
+    const statsEl = document.getElementById("stats");
+    const searchEl = document.getElementById("search");
+    const statusFilterEl = document.getElementById("statusFilter");
+    const countNote = document.getElementById("countNote");
+    const emptyMsg = document.getElementById("emptyMsg");
+    const headRow = document.getElementById("headRow");
+
+    const DETAIL_FIELDS = [
+      { key: "titleTH", label: "Title (TH)" },
+      { key: "titleEN", label: "Title (EN)" },
+      { key: "protocolNo", label: "Protocol No." },
+      { key: "sirbNo", label: "SIRB/EC No." },
+      { key: "sponsorName", label: "Sponsor" },
+      { key: "croName", label: "CRO" },
+    ];
+    const STATUSES = ["Pending", "Approved", "Rejected", "Needs revision"];
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str == null ? "" : str;
+      return div.innerHTML;
+    }
+    function formatSize(bytes) {
+      if (bytes == null) return "";
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+      return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    }
+    function statusClass(s) { return "st-" + String(s || "Pending").replace(/\s+/g, "-"); }
+    function fmtDate(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (isNaN(d)) return iso;
+      return d.toLocaleString();
+    }
+    function fmtDateShort(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (isNaN(d)) return iso;
+      return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    }
+    function applicantOf(s) {
+      return [s.contactNameTH, s.contactNameEN].filter(Boolean).join(" / ");
+    }
+
+    // ---- AI analysis helpers ----
+    function aiOf(s) { return s.analysis || null; }
+    function aiCompleteness(s) {
+      const a = aiOf(s);
+      return (a && a.result) ? a.result.completeness : -1;
+    }
+    function verdictClass(v) {
+      if (v === "Compliant") return "v-ok";
+      if (v === "Needs attention") return "v-warn";
+      if (v === "Non-compliant") return "v-bad";
+      return "v-none";
+    }
+    function aiCellHtml(s) {
+      const a = aiOf(s);
+      if (!a) return '<span class="muted">—</span>';
+      if (a.status === "queued") return '<span class="ai-badge ai-queued">⏳ queued</span>';
+      if (a.status === "processing") return '<span class="ai-badge ai-proc">⚙ analyzing…</span>';
+      if (a.status === "error") return '<span class="ai-badge v-bad">⚠ error</span>';
+      const r = a.result || {};
+      const v = (r.regulation && r.regulation.verdict) || "—";
+      return '<span class="ai-badge ' + verdictClass(v) + '" title="' + escapeHtml(v) + '">' +
+             (r.completeness != null ? r.completeness + "%" : "—") + " · " + escapeHtml(v) + "</span>";
+    }
+
+    document.getElementById("refreshBtn").addEventListener("click", refresh);
+    // Re-run AI analysis for a single submission (triggered from its detail panel)
+    async function reanalyzeOne(id, btn) {
+      if (btn) { btn.disabled = true; btn.textContent = "Analyzing…"; }
+      try {
+        await fetch(u("/api/admin/reanalyze"), {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ id: Number(id) }),
+        });
+      } catch (e) { /* ignore */ }
+      // Give the worker a moment, then refresh just the data.
+      setTimeout(function () { loadSubmissions(); }, 1500);
+    }
+    searchEl.addEventListener("input", render);
+    statusFilterEl.addEventListener("change", render);
+
+    // Sorting via header click
+    headRow.querySelectorAll("th[data-sort]").forEach(function (th) {
+      th.addEventListener("click", function () {
+        const key = th.dataset.sort;
+        if (sortKey === key) {
+          sortDir = sortDir === "asc" ? "desc" : "asc";
+        } else {
+          sortKey = key;
+          sortDir = key === "createdAt" || key === "id" ? "desc" : "asc";
+        }
+        render();
+      });
+    });
+
+    function refresh() { loadStats(); loadSubmissions(); }
+
+    async function loadStats() {
+      try { await fetch(g("/api/admin/stats"), { headers: authHeaders() }); } catch (e) { /* ignore */ }
+      renderStats();
+    }
+    function renderStats() {
+      const counts = { Pending: 0, "In review": 0, Approved: 0, Rejected: 0, "Needs revision": 0 };
+      allSubmissions.forEach(function (s) {
+        const st = s.status || "Pending";
+        if (counts[st] != null) counts[st]++;
+      });
+      statsEl.innerHTML =
+        stat(allSubmissions.length, "Total") +
+        stat(counts.Pending + counts["In review"], "Pending / In review") +
+        stat(counts.Approved, "Approved") +
+        stat(counts.Rejected + counts["Needs revision"], "Rejected / Revision");
+    }
+    function stat(num, label) {
+      return '<div class="stat"><div class="num">' + escapeHtml(String(num)) +
+             '</div><div class="lbl">' + escapeHtml(label) + "</div></div>";
+    }
+
+    async function loadSubmissions() {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty">Loading...</td></tr>';
+      try {
+        const res = await fetch(g("/api/submissions"), { headers: authHeaders() });
+        const data = await res.json();
+        allSubmissions = data.submissions || [];
+        renderStats();
+        render();
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty">Error loading: ' +
+          escapeHtml(err.message) + ". Is the server running?</td></tr>";
+      }
+    }
+
+    function getFiltered() {
+      const q = searchEl.value.trim().toLowerCase();
+      const st = statusFilterEl.value;
+      let items = allSubmissions.slice();
+      if (st) items = items.filter(function (s) { return (s.status || "Pending") === st; });
+      if (q) items = items.filter(function (s) {
+        return [s.titleTH, s.titleEN, s.protocolNo, s.sirbNo, s.sponsorName, s.croName,
+                s.contactNameTH, s.contactNameEN, s.email, s.phone]
+          .join(" ").toLowerCase().indexOf(q) !== -1;
+      });
+      items.sort(sortComparator);
+      return items;
+    }
+
+    function sortComparator(a, b) {
+      let va, vb;
+      if (sortKey === "applicant") { va = applicantOf(a); vb = applicantOf(b); }
+      else if (sortKey === "id") { va = a.id; vb = b.id; }
+      else if (sortKey === "aiCompleteness") { va = aiCompleteness(a); vb = aiCompleteness(b); }
+      else { va = a[sortKey]; vb = b[sortKey]; }
+      va = va == null ? "" : va;
+      vb = vb == null ? "" : vb;
+      let cmp;
+      if (typeof va === "number" && typeof vb === "number") cmp = va - vb;
+      else cmp = String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: "base" });
+      return sortDir === "asc" ? cmp : -cmp;
+    }
+
+    function updateHeaderArrows() {
+      headRow.querySelectorAll("th[data-sort]").forEach(function (th) {
+        const base = th.textContent.replace(/[▲▼]\s*$/, "").trim();
+        if (th.dataset.sort === sortKey) {
+          th.innerHTML = escapeHtml(base) + ' <span class="arrow">' + (sortDir === "asc" ? "▲" : "▼") + "</span>";
+        } else {
+          th.textContent = base;
+        }
+      });
+    }
+
+    function render() {
+      updateHeaderArrows();
+      const items = getFiltered();
+      countNote.textContent = items.length + " of " + allSubmissions.length + " shown";
+      emptyMsg.innerHTML = "";
+      if (!items.length) {
+        tbody.innerHTML = "";
+        emptyMsg.innerHTML = '<p class="empty">No submissions match your filters.</p>';
+        return;
+      }
+      let html = "";
+      items.forEach(function (s) {
+        const status = s.status || "Pending";
+        const isOpen = expanded.has(s.id);
+        const applicant = applicantOf(s);
+        html +=
+          '<tr class="main-row' + (isOpen ? " open" : "") + '" data-id="' + s.id + '">' +
+            '<td><span class="caret">▶</span></td>' +
+            '<td class="id-cell">#' + escapeHtml(String(s.id)) + "</td>" +
+            '<td><span class="status-pill ' + statusClass(status) + '">' + escapeHtml(status) + "</span></td>" +
+            "<td>" + aiCellHtml(s) + "</td>" +
+            '<td class="title-cell">' + escapeHtml(s.titleEN || "(untitled)") +
+              ((s.revision && s.revision > 1) ? '<span class="title-rev">rev #' + s.revision + "</span>" : "") +
+              (s.titleTH ? '<div class="th">' + escapeHtml(s.titleTH) + "</div>" : "") + "</td>" +
+            '<td class="nowrap">' + escapeHtml(s.protocolNo || "—") + "</td>" +
+            '<td data-col="applicant" title="' + escapeHtml(applicant) + '">' + (applicant ? escapeHtml(applicant) : '<span class="muted">—</span>') + "</td>" +
+            '<td data-col="sponsor" title="' + escapeHtml(s.sponsorName || "") + '">' + escapeHtml(s.sponsorName || "—") + "</td>" +
+            '<td class="nowrap muted" title="' + escapeHtml(fmtDate(s.createdAt)) + '">' + escapeHtml(fmtDateShort(s.createdAt)) + "</td>" +
+          "</tr>";
+        if (isOpen) {
+          html += '<tr class="expanded-row"><td colspan="9">' + detailHtml(s) + "</td></tr>";
+        }
+      });
+      tbody.innerHTML = html;
+
+      // Row toggle
+      tbody.querySelectorAll("tr.main-row").forEach(function (tr) {
+        tr.addEventListener("click", function () {
+          const id = Number(tr.dataset.id);
+          if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+          render();
+        });
+      });
+      // Prevent clicks inside detail from toggling the row
+      tbody.querySelectorAll("tr.expanded-row").forEach(function (tr) {
+        tr.addEventListener("click", function (e) { e.stopPropagation(); });
+      });
+      // Wire review controls
+      tbody.querySelectorAll(".detail").forEach(function (box) {
+        const id = box.dataset.id;
+        box.querySelectorAll(".track-box").forEach(function (tb) {
+          var saveBtn = tb.querySelector(".save-btn");
+          if (!saveBtn) return;   // read-only track for this role
+          saveBtn.addEventListener("click", function () {
+            saveReview(
+              id,
+              tb.dataset.track,
+              tb.querySelector(".rv-status").value,
+              tb.querySelector(".rv-comment").value,
+              tb
+            );
+          });
+        });
+        var delBtn = box.querySelector(".del-btn");
+        if (delBtn) delBtn.addEventListener("click", function () { deleteSubmission(id); });
+        var rerun = box.querySelector(".rerun-ai-btn");
+        if (rerun) rerun.addEventListener("click", function () { reanalyzeOne(id, rerun); });
+      });
+    }
+
+    function detailHtml(s) {
+      const left = DETAIL_FIELDS.map(function (f) {
+        const v = s[f.key];
+        return '<div class="row"><strong>' + escapeHtml(f.label) + "</strong>: " +
+               (v ? escapeHtml(v) : "<em>—</em>") + "</div>";
+      }).join("");
+
+      const contactName = applicantOf(s);
+      const right =
+        '<div class="row"><strong>Applicant</strong>: ' + (contactName ? escapeHtml(contactName) : "<em>—</em>") + "</div>" +
+        '<div class="row"><strong>Email</strong>: ' +
+          (s.email ? '<a href="mailto:' + encodeURIComponent(s.email) + '">' + escapeHtml(s.email) + "</a>" : "<em>—</em>") + "</div>" +
+        '<div class="row"><strong>Phone</strong>: ' + (s.phone ? escapeHtml(s.phone) : "<em>—</em>") + "</div>" +
+        '<div class="row"><strong>Submitted</strong>: ' + escapeHtml(fmtDate(s.createdAt)) + "</div>" +
+        ((s.revision && s.revision > 1)
+          ? '<div class="row"><strong>Revision</strong>: <span class="rev-badge">#' + s.revision +
+            "</span> · resubmitted " + escapeHtml(fmtDate(s.resubmittedAt)) + "</div>" +
+            (s.resubmitNote
+              ? '<div class="resub-note"><strong>Applicant note:</strong> ' + escapeHtml(s.resubmitNote) + "</div>"
+              : "")
+          : "");
+
+      const types = (s.sponsorType || []).map(function (t) {
+        return '<span class="badge">' + escapeHtml(t) + "</span>";
+      }).join("") || "<em>—</em>";
+
+      const files = (s.attachments || []).map(function (a) {
+        return '<a class="file-link" href="' + u("/uploads/" + encodeURIComponent(a.storedName)) +
+               '" download="' + escapeHtml(a.originalName) + '">⬇ ' +
+               escapeHtml(a.label) + ": " + escapeHtml(a.originalName) +
+               " (" + escapeHtml(formatSize(a.sizeBytes)) + ")</a>";
+      }).join("") || '<div class="row"><em>No files</em></div>';
+
+      // Per-track review boxes
+      const trackBoxes = (s.reviews || []).map(function (rv) {
+        const options = STATUSES.map(function (st) {
+          return '<option value="' + st + '"' + (st === rv.status ? " selected" : "") + ">" + st + "</option>";
+        }).join("");
+        const reviewedMeta = rv.reviewedAt
+          ? '<span class="track-meta">by ' + (rv.reviewer ? escapeHtml(rv.reviewer) : "—") +
+            " · " + escapeHtml(fmtDate(rv.reviewedAt)) + "</span>"
+          : '<span class="track-meta">not reviewed yet</span>';
+        const editable = canEditTrack(rv.track);
+        const controls = editable
+          ? ('<div class="review-row">' +
+               '<select class="rv-status">' + options + "</select>" +
+               '<textarea class="rv-comment" placeholder="Comment (optional)">' + escapeHtml(rv.comment || "") + "</textarea>" +
+               '<button class="save-btn">Save</button>' +
+             "</div>")
+          : ('<div class="review-row"><span class="track-meta">' +
+               (rv.comment ? "Comment: " + escapeHtml(rv.comment) : "View only — your role cannot edit this track") +
+             "</span></div>");
+        return (
+          '<div class="track-box" data-track="' + escapeHtml(rv.track) + '">' +
+            '<div class="track-head"><span class="track-name">' + escapeHtml(rv.track) + " review</span>" +
+              '<span class="status-pill ' + statusClass(rv.status) + '">' + escapeHtml(rv.status) + "</span>" +
+              reviewedMeta + "</div>" +
+            controls +
+          "</div>"
+        );
+      }).join("");
+
+      return (
+        '<div class="detail" data-id="' + escapeHtml(String(s.id)) + '">' +
+          '<div class="grid"><div>' + left + "</div><div>" + right + "</div></div>" +
+          '<div class="section-label">Sponsor type</div>' + types +
+          '<div class="section-label">Attachments</div>' + files +
+          aiPanelHtml(s) +
+          '<div class="section-label">Department reviews (overall: ' +
+            '<span class="status-pill ' + statusClass(s.status) + '">' + escapeHtml(s.status) + "</span>)</div>" +
+          '<div class="tracks">' + trackBoxes + "</div>" +
+          (SESSION.role === "admin"
+            ? '<div style="margin-top:14px;"><button class="del-btn">Delete submission</button></div>'
+            : "") +
+        "</div>"
+      );
+    }
+
+    function aiPanelHtml(s) {
+      const a = aiOf(s);
+      var rerunBtn = '<button class="rerun-ai-btn" data-id="' + escapeHtml(String(s.id)) + '">↻ Re-run AI</button>';
+      var hdr = function (label) {
+        return '<div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">' +
+               "<span>" + label + "</span>" + rerunBtn + "</div>";
+      };
+      if (!a) return hdr("AI document analysis") + '<div class="ai-panel"><em>Not analyzed.</em></div>';
+      if (a.status !== "done" || !a.result) {
+        return hdr("AI document analysis") +
+               '<div class="ai-panel">Status: <strong>' + escapeHtml(a.status) + "</strong>" +
+               (a.error ? ' — <span class="v-bad">' + escapeHtml(a.error) + "</span>" : "") + "</div>";
+      }
+      const r = a.result;
+      const secRows = r.sections.map(function (sec) {
+        var src = (sec.sourceDocuments && sec.sourceDocuments.length)
+          ? '<span class="ai-src">พบใน: ' + sec.sourceDocuments.map(escapeHtml).join(", ") + "</span>"
+          : "";
+        return '<div class="ai-sec">' + (sec.present ? '<span class="ai-yes">✔</span>' : '<span class="ai-no">✘</span>') +
+               " <strong>" + escapeHtml(sec.label) + "</strong> " + src +
+               (sec.summary ? '<div class="ai-sum">' + escapeHtml(sec.summary) + "</div>" : "") + "</div>";
+      }).join("");
+      const ruleRows = r.regulation.rules.map(function (ru) {
+        return '<div class="ai-rule">' + (ru.passed ? '<span class="ai-yes">PASS</span>' : '<span class="ai-no">FAIL</span>') +
+               ' <span class="ai-sev sev-' + escapeHtml(ru.severity) + '">' + escapeHtml(ru.severity) + "</span> " +
+               escapeHtml(ru.title) + ' <span class="ai-detail">— ' + escapeHtml(ru.detail) + "</span></div>";
+      }).join("");
+
+      // Recommendations for the officer
+      var recHtml = "";
+      if (r.recommendations && r.recommendations.length) {
+        recHtml = '<div class="ai-recs"><div class="ai-h">คำแนะนำสำหรับเจ้าหน้าที่</div>' +
+          r.recommendations.map(function (rc) {
+            return '<div class="ai-rec rec-' + escapeHtml(rc.level) + '">' + escapeHtml(rc.text) + "</div>";
+          }).join("") + "</div>";
+      }
+
+      var analyzedNote = (r.analyzedDocuments && r.analyzedDocuments.length)
+        ? '<div class="ai-analyzed">วิเคราะห์จากไฟล์: ' + r.analyzedDocuments.map(escapeHtml).join(", ") + "</div>"
+        : "";
+
+      return (
+        hdr('AI document analysis <span class="muted">(' + escapeHtml(r.engine) + ")</span>") +
+        '<div class="ai-panel">' +
+          '<div class="ai-top">' +
+            '<span class="ai-metric">Completeness: <strong>' + r.completeness + "%</strong> (" +
+              r.sectionsPresent + "/" + r.sectionsTotal + " sections)</span>" +
+            '<span class="ai-badge ' + verdictClass(r.regulation.verdict) + '">' +
+              escapeHtml(r.regulation.verdict) + " · " + r.regulation.failedCount + " issue(s)</span>" +
+          "</div>" +
+          analyzedNote +
+          (r.missingSections.length
+            ? '<div class="ai-missing">Missing: ' + r.missingSections.map(escapeHtml).join(", ") + "</div>" : "") +
+          recHtml +
+          '<div class="ai-cols">' +
+            '<div><div class="ai-h">Section check &amp; summaries</div>' + secRows + "</div>" +
+            '<div><div class="ai-h">Regulation compliance</div>' + ruleRows + "</div>" +
+          "</div>" +
+          '<div class="ai-docsum"><strong>Document summary:</strong> ' + escapeHtml(r.documentSummary || "—") + "</div>" +
+        "</div>"
+      );
+    }
+
+    async function saveReview(id, track, status, comment, tb) {
+      try {
+        const res = await fetch(u("/api/admin/review"), {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ id: Number(id), track: track, status: status, comment: comment }),
+        });
+        const data = await res.json().catch(function () { return {}; });
+        if (res.ok && data.ok) {
+          const sub = allSubmissions.find(function (x) { return String(x.id) === String(id); });
+          if (sub) {
+            const rv = (sub.reviews || []).find(function (r) { return r.track === track; });
+            if (rv) { rv.status = status; rv.comment = comment; rv.reviewer = SESSION.name; rv.reviewedAt = new Date().toISOString(); }
+            sub.status = data.overall;
+          }
+          renderStats();
+          setTimeout(render, 600);
+        } else {
+          alert("Save failed: " + (data.error || ("HTTP " + res.status)));
+        }
+      } catch (err) {
+        alert("Save error: " + err.message);
+      }
+    }
+
+    async function deleteSubmission(id) {
+      if (!confirm("Delete submission #" + id + " and all its files? This cannot be undone.")) return;
+      try {
+        const res = await fetch(u("/api/admin/delete"), {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ id: Number(id) }),
+        });
+        const data = await res.json().catch(function () { return {}; });
+        if (res.ok && data.ok) { expanded.delete(Number(id)); refresh(); }
+        else alert("Delete failed: " + (data.error || ("HTTP " + res.status)));
+      } catch (err) {
+        alert("Delete error: " + err.message);
+      }
+    }
+
+    document.querySelectorAll("a.navlink").forEach(function (a) {
+      a.setAttribute("href", u(a.dataset.path));
+    });
+
+    // Gate the page behind login, then load submissions.
+    (async function init() {
+      if (!(await requireLogin())) return;   // redirects to /login if not authed
+      // Show who is logged in + logout control in the topbar.
+      var right = document.querySelector(".topbar .right");
+      if (right) {
+        var badge = document.createElement("span");
+        badge.style.cssText = "font-size:.8rem;color:#475569;font-weight:600;";
+        badge.textContent = SESSION.name + " (" + SESSION.role + ")";
+        var out = document.createElement("button");
+        out.className = "btn-ghost"; out.textContent = "Logout";
+        out.addEventListener("click", async function () {
+          try { await fetch(u("/api/logout"), { method: "POST", headers: authHeaders() }); } catch (e) {}
+          sessionStorage.clear(); gotoLogin();
+        });
+        right.appendChild(badge); right.appendChild(out);
+      }
+      loadStats(); loadSubmissions();
+    })();
+  </script>
+  <script>
+  (function(){
+    var p=window.location.pathname;
+    var routes=["/index.html","/submission.html","/admin","/admin.html","/review","/review.html","/result-preview","/result-preview.html","/result","/result.html"];
+    var base=p;
+    for(var i=0;i<routes.length;i++){ if(p===routes[i]||p.endsWith(routes[i])){ base=p.slice(0,p.length-routes[i].length); break; } }
+    if(base===p){ base = p.endsWith("/")?p.slice(0,-1):p; }
+    var s=document.createElement("script"); s.src=base+"/chat-widget.js"; s.defer=true; document.body.appendChild(s);
+  })();
+  </script>
+</body>
+</html>
